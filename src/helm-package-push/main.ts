@@ -140,7 +140,7 @@ async function run(): Promise<void> {
               requestCert: !insecure,
             },
           }).request({
-            method: "POST",
+            method: "PUT",
             path: chartBase,
             headers,
             body,
