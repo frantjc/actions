@@ -1,4 +1,4 @@
-name: GHCR Delete Images
+name: Delete ghcr.io images
 description: |
   Delete container images from ghcr.io.
 author: frantjc
