@@ -1,0 +1,37 @@
+name: Build Actions
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - src/**
+      - .github/workflows/build-action.yml
+  workflow_dispatch: {}
+permissions:
+  contents: write
+  pull-requests: write
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: |
+          yarn all
+      - uses: peter-evans/create-pull-request@v7
+        with:
+          add-paths: |
+            dist/
+          reviewers: |
+            ${{ github.actor }}
+          title: |
+            Bump dist/
+          commit-message: |
+            Update dust/ built by GitHub Actions workflow "${{ github.workflow }}" for user ${{ github.actor }} from commit ${{ github.sha }}.
+          body: |
+            Update [dist/](dist/) built by [GitHub Actions workflow "${{ github.workflow }}"](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) for user ${{ github.actor }} from commit ${{ github.sha }}.
+          branch: github-actions/gen/dist
+          delete-branch: true
+          labels: github_actions

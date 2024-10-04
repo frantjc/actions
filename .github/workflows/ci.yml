@@ -1,0 +1,26 @@
+name: CI
+on:
+  workflow_dispatch: {}
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: azure/setup-helm@v4
+      - uses: ./helm-package-push
+        with:
+          chart-path: testdata/chart
+          repository: oci://ghcr.io/${{ github.repository }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GH_PAT }}
+      - uses: ./ghcr-delete-images
+        with:
+          images: |
+            ghcr.io/${{ github.repository }}
+          token: ${{ secrets.GH_PAT }}
