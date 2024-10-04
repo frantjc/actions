@@ -1,9 +1,14 @@
 name: CI
 on:
-  workflow_dispatch: {}
   push:
     branches:
       - main
+    paths:
+      - .github/workflows/ci.yml
+      - dist/**
+      - helm-package-push/**
+      - ghcr-delete-images/**
+      - package*.json
   pull_request:
     branches:
       - main

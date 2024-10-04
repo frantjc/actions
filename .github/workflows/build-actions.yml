@@ -4,8 +4,8 @@ on:
     branches:
       - main
     paths:
-      - src/**
       - .github/workflows/build-action.yml
+      - src/**
   workflow_dispatch: {}
 permissions:
   contents: write
