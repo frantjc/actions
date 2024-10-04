@@ -1,0 +1,42 @@
+name: Helm Package Push
+description: |
+  Package and push a Helm Chart to an oci or https repository.
+author: frantjc
+branding:
+  color: orange
+  icon: package
+inputs:
+  chart-path:
+    description: |
+      Path to chart to package and push.
+    required: true
+  push:
+    description: |
+      Whether or not to push the packaged chart.
+    default: true
+  repository:
+    description: |
+      Repository to authenticate and push the chart to.
+  dependency-update:
+    description: |
+      Update dependencies from "Chart.yaml" to dir "charts/" before packaging.
+    default: true
+  app-version:
+    description: |
+      Set the appVersion on the chart to this version.
+  version:
+    description: |
+      Set the version on the chart to this semver version.
+  username:
+    description: |
+      Registry username.
+  password:
+    description: |
+      Registry password or identity token.
+  insecure:
+    description: |
+      Allow connections to TLS registry without certs.
+    default: false
+runs:
+  using: node20
+  main: ../dist/helm-package-push/index.js

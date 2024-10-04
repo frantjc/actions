@@ -1,0 +1,40 @@
+{
+  "name": "actions",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "all": "npm-run-all fmt build",
+    "fmt": "npm-run-all fmt:*",
+    "fmt:eslint": "eslint --fix",
+    "fmt:pretty": "prettier --write .",
+    "build": "npm-run-all build:tsc build:ncc",
+    "build:tsc": "tsc",
+    "build:ncc": "npm-run-all build:ncc:*",
+    "build:ncc:helm-package-push": "ncc build ./lib/helm-package-push/main.js --source-map --license licenses.txt --minify --out dist/helm-package-push",
+    "build:ncc:ghcr-delete-images": "ncc build ./lib/ghcr-delete-images/main.js --source-map --license licenses.txt --minify --out dist/ghcr-delete-images"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/frantjc/actions.git"
+  },
+  "author": "frantjc",
+  "dependencies": {
+    "@actions/core": "^1.10.1",
+    "@actions/exec": "^1.1.1",
+    "octokit": "^3.1.2",
+    "yaml": "^2.5.1"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.20",
+    "@typescript-eslint/parser": "^7.0.2",
+    "@vercel/ncc": "^0.38.1",
+    "eslint": "^8.57.0",
+    "eslint-plugin-github": "^4.10.1",
+    "npm-run-all": "^4.1.5",
+    "prettier": "^3.2.5",
+    "typescript": "^5.3.3"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}

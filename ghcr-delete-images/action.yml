@@ -1,0 +1,19 @@
+name: GHCR Delete Images
+description: |
+  Delete container images from ghcr.io.
+author: frantjc
+branding:
+  color: red
+  icon: box
+inputs:
+  token:
+    description: |
+      GitHub token to authenticate with. Must have delete:packages scope.
+    default: ${{ github.token }}
+  images:
+    description: |
+      Images to delete from ghcr.io.
+    required: true
+runs:
+  using: node20
+  main: ../dist/ghcr-delete-images/index.js
