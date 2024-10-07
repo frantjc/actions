@@ -100,7 +100,7 @@ async function run(): Promise<void> {
       const username = core.getInput("username");
       const password = core.getInput("password");
       const insecure = core.getBooleanInput("insecure");
-      const repositoryName = crypto.randomUUID().toString();
+      const repositoryName = `${repository.hostname}-${crypto.randomUUID().toString()}`;
 
       // Login.
       switch (scheme) {
@@ -186,12 +186,6 @@ async function run(): Promise<void> {
             `--version=${chartVersion}`,
             `--context-path=${repository.pathname}`,
           ];
-
-          if (!["", "/"].includes(repository.pathname)) {
-            cmPushArgs = cmPushArgs.concat([
-              `--context-path="${repository.pathname}"`,
-            ]);
-          }
 
           if (insecure) {
             cmPushArgs = cmPushArgs.concat(["--insecure"]);

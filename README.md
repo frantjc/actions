@@ -9,7 +9,7 @@ A collection of GitHub Actions amassed over the years which aren't big enough to
 Delete container images from the ghcr.io registry using GitHub's API. If this is the last version of this package, deletes the package.
 
 ```yml
-- uses: frantjc/actions/ghcr-delete-images@v1
+- uses: frantjc/actions/ghcr-delete-images@v0
   with:
     # GitHub token to authenticate with.
     # Must have read:packages and delete:packages scopes.
@@ -25,7 +25,7 @@ Delete container images from the ghcr.io registry using GitHub's API. If this is
 Package and push a Helm Chart to an OCI, ChartMuseum or JFrog-Artifactory-compatible http(s) repository.
 
 ```yml
-- uses: frantjc/actions/helm-package-push@v1
+- uses: frantjc/actions/helm-package-push@v0
   with:
     # Path to chart to package and push. Required.
     chart-path: .
