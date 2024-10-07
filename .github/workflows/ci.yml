@@ -22,6 +22,7 @@ jobs:
         env:
           DEBUG: "1"
           STORAGE: local
+          STORAGE_LOCAL_ROOTDIR: /tmp
         options: >-
           --health-cmd "sh -c 'wget -qSO- http://localhost:8080/health'"
     runs-on: ubuntu-latest
