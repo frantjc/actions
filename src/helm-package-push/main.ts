@@ -193,7 +193,7 @@ async function run(): Promise<void> {
 
           cmPushArgs = cmPushArgs.concat([repositoryName]);
 
-          core.startGroup("helm plugin uninstall");
+          core.startGroup("helm cm-push");
           await cp.exec("helm", cmPushArgs);
           core.endGroup();
 
