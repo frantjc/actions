@@ -44,6 +44,6 @@ jobs:
       - uses: ./helm-package-push
         with:
           chart-path: testdata/chart
-          repository: cm://cm:8080
+          repository: cm://localhost:8080/
         env:
           HELM_REPO_USE_HTTP: "true"

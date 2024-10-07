@@ -86,8 +86,7 @@ async function run(): Promise<void> {
             "https://github.com/chartmuseum/helm-push",
           ];
 
-          const debug = core.isDebug();
-          if (debug || true) {
+          if (debug) {
             pluginInstallArgs = pluginInstallArgs.concat(["--debug"]);
           }
 
