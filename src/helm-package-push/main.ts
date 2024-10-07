@@ -229,7 +229,7 @@ async function run(): Promise<void> {
           break;
       }
 
-      // Logout and cleanup.
+      // Logout.
       switch (scheme) {
         case "oci":
           let registryLogoutArgs = ["registry", "logout", repository.host];
@@ -243,16 +243,33 @@ async function run(): Promise<void> {
           core.endGroup();
 
           break;
+        default:
+          let repoRemoveArgs = ["repo", "remove", repositoryName];
+
+          if (debug) {
+            repoRemoveArgs = repoRemoveArgs.concat(["--debug"]);
+          }
+
+          core.startGroup("helm repo remove");
+          await cp.exec("helm", repoRemoveArgs);
+          core.endGroup();
+      }
+
+      // Cleanup.
+      switch (scheme) {
         case "cm":
+          let pluginUninstallArgs = ["plugin", "uninstall", "cm-push"];
+
+          if (debug) {
+            pluginUninstallArgs = pluginUninstallArgs.concat(["--debug"]);
+          }
+
           core.startGroup("helm plugin uninstall");
-          await cp.exec("helm", ["plugin", "uninstall", "cm-push"]);
+          await cp.exec("helm", pluginUninstallArgs);
           core.endGroup();
 
-        // Fallthrough.
+          break;
         default:
-          core.startGroup("helm repo remove");
-          await cp.exec("helm", ["repo", "remove", repositoryName]);
-          core.endGroup();
       }
     }
   } catch (err) {
