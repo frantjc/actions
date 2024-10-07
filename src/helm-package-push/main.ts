@@ -184,8 +184,14 @@ async function run(): Promise<void> {
             "cm-push",
             chart,
             `--version=${chartVersion}`,
-            // `--context-path="${repository.pathname}"`,
+            `--context-path=${repository.pathname}`,
           ];
+
+          if (!["", "/"].includes(repository.pathname)) {
+            cmPushArgs = cmPushArgs.concat([
+              `--context-path="${repository.pathname}"`,
+            ]);
+          }
 
           if (insecure) {
             cmPushArgs = cmPushArgs.concat(["--insecure"]);
