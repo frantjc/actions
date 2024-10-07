@@ -18,7 +18,9 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-      - run: |
+      - name: Run yarn
+        run: |
+          yarn
           yarn all
       - uses: peter-evans/create-pull-request@v7
         with:
