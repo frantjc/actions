@@ -6,6 +6,7 @@ import path from "path";
 import yaml from "yaml";
 import undici from "undici";
 import http from "http";
+import crypto from "crypto";
 
 async function run(): Promise<void> {
   try {
@@ -74,37 +75,50 @@ async function run(): Promise<void> {
       );
 
       core.setOutput("repo", repository);
+      switch (repository.protocol.slice(0, -1)) {
+        case "cm":
+          core.startGroup("helm plugin install");
+          await cp.exec("helm", [
+            "plugin",
+            "install",
+            "https://github.com/chartmuseum/helm-push",
+          ]);
+          core.endGroup();
+      }
 
       const username = core.getInput("username");
       const password = core.getInput("password");
       const insecure = core.getBooleanInput("insecure");
 
+      let repoAddArgs = ["repo", "add"];
+
+      if (username && password) {
+        repoAddArgs = repoAddArgs.concat([
+          "--username",
+          username,
+          "--password",
+          password,
+        ]);
+      }
+
+      if (debug) {
+        repoAddArgs = repoAddArgs.concat(["--debug"]);
+      }
+
+      if (insecure) {
+        repoAddArgs = repoAddArgs.concat(["--insecure-skip-tls-verify"]);
+      }
+
+      const repositoryName = crypto.randomUUID().toString();
+
+      repoAddArgs = repoAddArgs.concat([repositoryName, repository.toString()]);
+
+      core.startGroup("helm repo add");
+      await cp.exec("helm", repoAddArgs);
+      core.endGroup();
+
       switch (repository.protocol.slice(0, -1)) {
         case "oci":
-          if (username && password) {
-            let registryLoginArgs = [
-              "registry",
-              "login",
-              repository.host,
-              "--username",
-              username,
-              "--password",
-              password,
-            ];
-
-            if (debug) {
-              registryLoginArgs = registryLoginArgs.concat(["--debug"]);
-            }
-
-            if (insecure) {
-              registryLoginArgs = registryLoginArgs.concat(["--insecure"]);
-            }
-
-            core.startGroup("helm registry login");
-            await cp.exec("helm", registryLoginArgs);
-            core.endGroup();
-          }
-
           let pushArgs = ["push", chart, repository.toString()];
 
           if (debug) {
@@ -122,6 +136,27 @@ async function run(): Promise<void> {
           core.setOutput("chart", path.join(repository.toString(), chartName));
 
           break;
+        case "cm":
+          let cmPushArgs = [
+            "cm-push",
+            chart,
+            `--version="${chartVersion}"`,
+            `--context-path="${repository.pathname}"`,
+          ];
+
+          if (insecure) {
+            cmPushArgs = cmPushArgs.concat(["--insecure"]);
+          }
+
+          cmPushArgs = cmPushArgs.concat([repositoryName]);
+
+          core.startGroup("helm plugin uninstall");
+          await cp.exec("helm", cmPushArgs);
+          core.endGroup();
+
+          core.startGroup("helm plugin uninstall");
+          await cp.exec("helm", ["plugin", "uninstall", "cm-push"]);
+          core.endGroup();
         case "http":
         case "https":
           const { size } = fs.statSync(chart);
@@ -150,6 +185,10 @@ async function run(): Promise<void> {
 
           break;
       }
+
+      core.startGroup("helm repo remove");
+      await cp.exec("helm", ["repo", "remove", repositoryName]);
+      core.endGroup();
     }
   } catch (err) {
     if (typeof err === "string" || err instanceof Error) {

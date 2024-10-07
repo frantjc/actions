@@ -8,6 +8,10 @@ MAJOR = $(word 1,$(subst ., ,$(SEMVER)))
 MINOR = $(word 2,$(subst ., ,$(SEMVER)))
 
 release:
+	@$(YARN)
+	@$(YARN) all
+	@$(GIT) add src/ dist/
+	@$(GIT) commit -m $(SEMVER)
 	@$(YARN) version --new-version $(SEMVER)
 	@$(GIT) push
 	@$(GIT) tag -f v$(MAJOR)
@@ -15,6 +19,10 @@ release:
 	@$(GIT) push --tags -f
 else
 release:
+	@$(YARN)
+	@$(YARN) all
+	@$(GIT) add src/ dist/
+	@$(GIT) commit -m $(SEMVER)
 	@$(YARN) version --new-version $(SEMVER)
 	@$(GIT) push
 	@$(GIT) push --tags
