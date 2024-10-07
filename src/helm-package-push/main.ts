@@ -183,7 +183,7 @@ async function run(): Promise<void> {
           let cmPushArgs = [
             "cm-push",
             chart,
-            `--version="${chartVersion}"`,
+            // `--version=${chartVersion}`,
             `--context-path="${repository.pathname}"`,
           ];
 
