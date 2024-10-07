@@ -80,12 +80,19 @@ async function run(): Promise<void> {
       // Setup.
       switch (scheme) {
         case "cm":
-          core.startGroup("helm plugin install");
-          await cp.exec("helm", [
+          let pluginInstallArgs = [
             "plugin",
             "install",
             "https://github.com/chartmuseum/helm-push",
-          ]);
+          ];
+
+          const debug = core.isDebug();
+          if (debug || true) {
+            pluginInstallArgs = pluginInstallArgs.concat(["--debug"]);
+          }
+
+          core.startGroup("helm plugin install");
+          await cp.exec("helm", pluginInstallArgs);
           core.endGroup();
 
           break;
