@@ -16,7 +16,8 @@ Delete container images from the ghcr.io registry using GitHub's API. If this is
     # Default ${{ github.token }}.
     token: ${{ secrets.GH_PAT }}
     # Whitespace-delimited images to delete from ghcr.io. Required.
-    images: ghcr.io/frantjc/actions:1.0.0
+    images: |
+      ghcr.io/frantjc/actions:1.0.0
       ghcr.io/frantjc/actions@sha256:4594271250150c1a322ed749abfd218e1a8c6eb1ade90872e325a664412e2037
 ```
 
@@ -34,17 +35,16 @@ Package and push a Helm Chart to an OCI, ChartMuseum or JFrog-Artifactory-compat
     # Repository to authenticate and push the chart to.
     # Receives HTTP PUT with the Helm Chart .tgz to the path
     # /$CHART_NAME-$CHART_VERSION.tz with Basic Authentication
-    # if username and password are specified.
-    #
-    # Other examples:
-    # cm://chartmuseum.mycorp.net/
-    # oci://ghcr.io/frantjc/actions
+    # if username and password are specified. Required if push is true.
+    # More examples:
+    #  - cm://chartmuseum.mycorp.net/
+    #  - oci://ghcr.io/frantjc/actions
     repository: https://jfrog.mycorp.net/artifactory/helm-local
     # Whether or not to update dependencies when packaging. Default true.
     dependency-update: true
     # Set the appVersion on the chart to this version.
-    app-version: v1.0.0
-    # Set the version on the chart to this semver version.
+    app-version: 1.0.0
+    # Set the version on the chart to this SemVer.
     version: v1.0.0
     # Repository username.
     username: ${{ secrets.HELM_REPO_USERNAME }}
