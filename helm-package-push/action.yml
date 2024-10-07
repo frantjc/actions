@@ -29,13 +29,13 @@ inputs:
       Set the version on the chart to this semver version.
   username:
     description: |
-      Registry username.
+      Repository username.
   password:
     description: |
-      Registry password or identity token.
+      Repository password or identity token.
   insecure:
     description: |
-      Allow connections to TLS registry without certs.
+      Allow connections to TLS repository without certs.
     default: false
 runs:
   using: node20

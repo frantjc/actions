@@ -8,7 +8,7 @@ branding:
 inputs:
   token:
     description: |
-      GitHub token to authenticate with. Must have delete:packages scope.
+      GitHub token to authenticate with. Must have read:packages and delete:packages scopes.
     default: ${{ github.token }}
   images:
     description: |
