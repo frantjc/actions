@@ -39,7 +39,6 @@ jobs:
             ghcr.io/${{ github.repository }}/${{ steps.chart.outputs.name }}:${{ steps.chart.outputs.version }}
           token: ${{ secrets.GH_PAT }}
       - uses: ./helm-package-push
-        id: chart
         with:
           chart-path: testdata/chart
           repository: cm://cm:8080
