@@ -73,9 +73,12 @@ async function run(): Promise<void> {
       const repository = new URL(
         core.getInput("repository", { required: true }),
       );
+      const scheme = repository.protocol.slice(0, -1);
 
       core.setOutput("repo", repository);
-      switch (repository.protocol.slice(0, -1)) {
+
+      // Setup.
+      switch (scheme) {
         case "cm":
           core.startGroup("helm plugin install");
           await cp.exec("helm", [
@@ -84,40 +87,74 @@ async function run(): Promise<void> {
             "https://github.com/chartmuseum/helm-push",
           ]);
           core.endGroup();
+
+          break;
       }
 
       const username = core.getInput("username");
       const password = core.getInput("password");
       const insecure = core.getBooleanInput("insecure");
-
-      let repoAddArgs = ["repo", "add"];
-
-      if (username && password) {
-        repoAddArgs = repoAddArgs.concat([
-          "--username",
-          username,
-          "--password",
-          password,
-        ]);
-      }
-
-      if (debug) {
-        repoAddArgs = repoAddArgs.concat(["--debug"]);
-      }
-
-      if (insecure) {
-        repoAddArgs = repoAddArgs.concat(["--insecure-skip-tls-verify"]);
-      }
-
       const repositoryName = crypto.randomUUID().toString();
 
-      repoAddArgs = repoAddArgs.concat([repositoryName, repository.toString()]);
+      // Login.
+      switch (scheme) {
+        case "oci":
+          let registryLoginArgs = ["registry", "login", repository.host];
 
-      core.startGroup("helm repo add");
-      await cp.exec("helm", repoAddArgs);
-      core.endGroup();
+          if (username && password) {
+            registryLoginArgs = registryLoginArgs.concat([
+              "--username",
+              username,
+              "--password",
+              password,
+            ]);
+          }
 
-      switch (repository.protocol.slice(0, -1)) {
+          if (debug) {
+            registryLoginArgs = registryLoginArgs.concat(["--debug"]);
+          }
+
+          if (insecure) {
+            registryLoginArgs = registryLoginArgs.concat(["--insecure"]);
+          }
+
+          core.startGroup("helm registry login");
+          await cp.exec("helm", registryLoginArgs);
+          core.endGroup();
+
+          break;
+        default:
+          let repoAddArgs = ["repo", "add"];
+
+          if (username && password) {
+            repoAddArgs = repoAddArgs.concat([
+              "--username",
+              username,
+              "--password",
+              password,
+            ]);
+          }
+
+          if (debug) {
+            repoAddArgs = repoAddArgs.concat(["--debug"]);
+          }
+
+          if (insecure) {
+            repoAddArgs = repoAddArgs.concat(["--insecure-skip-tls-verify"]);
+          }
+
+          repoAddArgs = repoAddArgs.concat([
+            repositoryName,
+            repository.toString(),
+          ]);
+
+          core.startGroup("helm repo add");
+          await cp.exec("helm", repoAddArgs);
+          core.endGroup();
+      }
+
+      // Push.
+      switch (scheme) {
         case "oci":
           let pushArgs = ["push", chart, repository.toString()];
 
@@ -154,9 +191,9 @@ async function run(): Promise<void> {
           await cp.exec("helm", cmPushArgs);
           core.endGroup();
 
-          core.startGroup("helm plugin uninstall");
-          await cp.exec("helm", ["plugin", "uninstall", "cm-push"]);
-          core.endGroup();
+          core.setOutput("chart", path.join(repository.toString(), chartBase));
+
+          break;
         case "http":
         case "https":
           const { size } = fs.statSync(chart);
@@ -186,9 +223,31 @@ async function run(): Promise<void> {
           break;
       }
 
-      core.startGroup("helm repo remove");
-      await cp.exec("helm", ["repo", "remove", repositoryName]);
-      core.endGroup();
+      // Logout and cleanup.
+      switch (scheme) {
+        case "oci":
+          let registryLogoutArgs = ["registry", "logout", repository.host];
+
+          if (debug) {
+            registryLogoutArgs = registryLogoutArgs.concat(["--debug"]);
+          }
+
+          core.startGroup("helm registry logout");
+          await cp.exec("helm", registryLogoutArgs);
+          core.endGroup();
+
+          break;
+        case "cm":
+          core.startGroup("helm plugin uninstall");
+          await cp.exec("helm", ["plugin", "uninstall", "cm-push"]);
+          core.endGroup();
+
+        // Fallthrough.
+        default:
+          core.startGroup("helm repo remove");
+          await cp.exec("helm", ["repo", "remove", repositoryName]);
+          core.endGroup();
+      }
     }
   } catch (err) {
     if (typeof err === "string" || err instanceof Error) {

@@ -36,7 +36,7 @@ Package and push a Helm Chart to an OCI, ChartMuseum or JFrog-Artifactory-compat
     # /$CHART_NAME-$CHART_VERSION.tz with Basic Authentication
     # if username and password are specified.
     #
-    # Other options:
+    # Other examples:
     # cm://chartmuseum.mycorp.net/
     # oci://ghcr.io/frantjc/actions
     repository: https://jfrog.mycorp.net/artifactory/helm-local
