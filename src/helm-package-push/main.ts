@@ -213,16 +213,19 @@ async function run(): Promise<void> {
               `Basic ${Buffer.from(`${username}:${password}`).toString("base64")}`;
           }
 
-          await new undici.Client(repository, {
+          core.startGroup("builtin push");
+          await new undici.Client(repository.origin, {
             connect: {
+              rejectUnauthorized: !insecure,
               requestCert: !insecure,
             },
           }).request({
             method: "PUT",
-            path: chartBase,
+            path: path.join(repository.pathname, chartBase),
             headers,
             body,
           });
+          core.endGroup();
 
           core.setOutput("chart", path.join(repository.toString(), chartBase));
 

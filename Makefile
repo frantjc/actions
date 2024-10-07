@@ -1,7 +1,7 @@
 YARN = yarn
 GIT = git
 
-SEMVER ?= 0.1.0
+SEMVER ?= 0.1.1
 
 ifeq (,$(findstring -,$(SEMVER)))
 MAJOR = $(word 1,$(subst ., ,$(SEMVER)))
@@ -11,7 +11,7 @@ release:
 	@$(YARN)
 	@$(YARN) all
 	@$(GIT) add .
-	@$(GIT) commit -m $(SEMVER)
+	@$(GIT) commit -m $(SEMVER) || true
 	@$(YARN) version --new-version $(SEMVER)
 	@$(GIT) push
 	@$(GIT) tag -f v$(MAJOR)
