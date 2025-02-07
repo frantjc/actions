@@ -13,7 +13,6 @@ type SetupOpts = {
 };
 
 type LoginOpts = {
-  repository: URL;
   username?: string;
   password?: string;
   debug?: boolean;
@@ -23,7 +22,6 @@ type LoginOpts = {
 type PushOpts = {
   chartTgzPath: string;
   chartName: string;
-  repository: URL;
   chartVersion: string;
   username?: string;
   password?: string;
@@ -32,7 +30,6 @@ type PushOpts = {
 };
 
 type LogoutOpts = {
-  repository: URL;
   debug?: boolean;
 };
 
@@ -42,6 +39,11 @@ type CleanupOpts = {
 
 abstract class Pusher {
   public repositoryName: string = "";
+  public repository: URL;
+
+  constructor(url: URL) {
+    this.repository = url;
+  }
 
   async setup(_: SetupOpts): Promise<void> {}
   async login(opts: LoginOpts): Promise<void> {
@@ -65,12 +67,12 @@ abstract class Pusher {
     }
 
     if (!this.repositoryName) {
-      this.repositoryName = `${opts.repository.hostname}-${crypto.randomUUID().toString()}`;
+      this.repositoryName = `${this.repository.hostname}-${crypto.randomUUID().toString()}`;
     }
 
     repoAddArgs = repoAddArgs.concat([
       this.repositoryName,
-      opts.repository.toString(),
+      this.repository.toString(),
     ]);
 
     core.startGroup("helm repo add");
@@ -115,7 +117,7 @@ class ChartMuseumPusher extends Pusher {
       "cm-push",
       opts.chartTgzPath,
       `--version=${opts.chartVersion}`,
-      `--context-path=${opts.repository.pathname}`,
+      `--context-path=${this.repository.pathname}`,
     ];
 
     if (opts?.insecure) {
@@ -130,7 +132,7 @@ class ChartMuseumPusher extends Pusher {
 
     const chartBase = path.basename(opts.chartTgzPath);
 
-    return path.join(opts.repository.toString(), chartBase);
+    return path.join(this.repository.toString(), chartBase);
   }
 
   async cleanup(opts?: CleanupOpts): Promise<void> {
@@ -148,7 +150,7 @@ class ChartMuseumPusher extends Pusher {
 
 class OCIPusher extends Pusher {
   async login(opts: LoginOpts): Promise<void> {
-    let registryLoginArgs = ["registry", "login", opts.repository.host];
+    let registryLoginArgs = ["registry", "login", this.repository.host];
 
     if (opts?.username && opts?.password) {
       registryLoginArgs = registryLoginArgs.concat([
@@ -173,7 +175,7 @@ class OCIPusher extends Pusher {
   }
 
   async push(opts: PushOpts): Promise<string> {
-    let pushArgs = ["push", opts.chartTgzPath, opts.repository.toString()];
+    let pushArgs = ["push", opts.chartTgzPath, this.repository.toString()];
 
     if (opts?.debug) {
       pushArgs = pushArgs.concat(["--debug"]);
@@ -187,11 +189,11 @@ class OCIPusher extends Pusher {
     await cp.exec("helm", pushArgs);
     core.endGroup();
 
-    return path.join(opts.repository.toString(), opts.chartName);
+    return path.join(this.repository.toString(), opts.chartName);
   }
 
   async logout(opts: LogoutOpts): Promise<void> {
-    let registryLogoutArgs = ["registry", "logout", opts.repository.host];
+    let registryLogoutArgs = ["registry", "logout", this.repository.host];
 
     if (opts?.debug) {
       registryLogoutArgs = registryLogoutArgs.concat(["--debug"]);
@@ -218,53 +220,62 @@ class ArtifactoryPusher extends Pusher {
 
     const chartBase = path.basename(opts.chartTgzPath);
 
-    if (opts.repository.protocol === "rt:") {
-      opts.repository.protocol = `${process.env.RT_PROTOCOL || "https"}`;
+    if (this.repository.protocol === "rt:") {
+      this.repository.protocol = `${process.env.RT_PROTOCOL || "https"}`;
     }
 
     core.startGroup("builtin push");
-    await new undici.Client(opts.repository.origin, {
+    await new undici.Client(this.repository.origin, {
       connect: {
         rejectUnauthorized: !opts?.insecure,
         requestCert: !opts?.insecure,
       },
     }).request({
       method: "PUT",
-      path: path.join(opts.repository.pathname, chartBase),
+      path: path.join(this.repository.pathname, chartBase),
       headers,
       body,
     });
     core.endGroup();
 
-    return path.join(opts.repository.toString(), chartBase);
+    return path.join(this.repository.toString(), chartBase);
+  }
+}
+
+class URLOpener<T> {
+  constructor(private ctor: new (url: URL) => T) {}
+
+  open(url: URL): T {
+    return new this.ctor(url);
   }
 }
 
 class URLMux<T> {
-  private handlers = new Map<string, T>();
+  private handlers = new Map<string, URLOpener<T>>();
 
-  register(opener: T, scheme: string, ...schemes: string[]): void {
-    for (const s in schemes.concat([scheme])) {
+  register(opener: URLOpener<T>, scheme: string, ...schemes: string[]): void {
+    for (const s of schemes.concat([scheme])) {
       this.handlers.set(s, opener);
     }
   }
 
-  open(url: string): T {
-    const scheme = new URL(url).protocol.slice(0, -1);
-    const opened = this.handlers.get(scheme);
+  open(addr: string): T {
+    const url = new URL(addr);
+    const scheme = url.protocol.slice(0, -1);
+    const opener = this.handlers.get(scheme);
 
-    if (!opened) {
+    if (!opener) {
       throw new Error(`nothing registered for scheme ${scheme}`);
     }
 
-    return opened;
+    return opener.open(url);
   }
 }
 
 const urlMux = new URLMux<Pusher>();
-urlMux.register(new ChartMuseumPusher(), "cm");
-urlMux.register(new OCIPusher(), "oci");
-urlMux.register(new ArtifactoryPusher(), "rt", "https", "http");
+urlMux.register(new URLOpener(ChartMuseumPusher), "cm");
+urlMux.register(new URLOpener(OCIPusher), "oci");
+urlMux.register(new URLOpener(ArtifactoryPusher), "rt", "https", "http");
 
 async function run(): Promise<void> {
   try {
@@ -341,7 +352,6 @@ async function run(): Promise<void> {
       const password = core.getInput("password");
 
       await pusher.login({
-        repository,
         username,
         password,
         debug,
@@ -351,7 +361,6 @@ async function run(): Promise<void> {
       const chart = await pusher.push({
         chartTgzPath,
         chartName,
-        repository,
         chartVersion,
         username,
         password,
@@ -362,7 +371,6 @@ async function run(): Promise<void> {
       core.setOutput("chart", chart);
 
       await pusher.logout({
-        repository,
         debug,
       });
 
