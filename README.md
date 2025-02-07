@@ -15,8 +15,8 @@ Delete container images from the ghcr.io registry using GitHub's API. If this is
     # Must have read:packages and delete:packages scopes.
     # Default ${{ github.token }}.
     token: ${{ secrets.GH_PAT }}
-    # Whitespace-delimited images to delete from ghcr.io. Required.
-    images: |
+    # Whitespace-delimited image tags to delete from ghcr.io. Required.
+    tags: |
       ghcr.io/frantjc/actions:1.0.0
       ghcr.io/frantjc/actions@sha256:4594271250150c1a322ed749abfd218e1a8c6eb1ade90872e325a664412e2037
 ```
@@ -26,6 +26,9 @@ Delete container images from the ghcr.io registry using GitHub's API. If this is
 Package and push a Helm Chart to an OCI, ChartMuseum or JFrog-Artifactory-compatible http(s) repository.
 
 ```yml
+# This action relies on `helm` being installed to work.
+# The simplest way to do this is via https://github.com/azure/setup-helm.
+#   - uses: azure/setup-helm@v4
 - uses: frantjc/actions/helm-package-push@v0
   with:
     # Path to chart to package and push. Required.
