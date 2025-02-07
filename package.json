@@ -10,8 +10,8 @@
     "build": "npm-run-all build:tsc build:ncc",
     "build:tsc": "tsc",
     "build:ncc": "npm-run-all build:ncc:*",
-    "build:ncc:helm-package-push": "ncc build ./lib/helm-package-push/main.js --source-map --license licenses.txt --minify --out dist/helm-package-push",
-    "build:ncc:ghcr-delete-images": "ncc build ./lib/ghcr-delete-images/main.js --source-map --license licenses.txt --minify --out dist/ghcr-delete-images"
+    "build:ncc:helm-package-push": "ncc build ./lib/helm-package-push/main.js --source-map --license licenses.txt --minify --out helm-package-push/dist",
+    "build:ncc:ghcr-delete-images": "ncc build ./lib/ghcr-delete-images/main.js --source-map --license licenses.txt --minify --out ghcr-delete-images/dist"
   },
   "repository": {
     "type": "git",

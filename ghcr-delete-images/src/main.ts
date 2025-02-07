@@ -11,18 +11,18 @@ async function run(): Promise<void> {
       }),
     });
 
-    const images = core.getMultilineInput("images", {
+    const tags = core.getMultilineInput("tags", {
       required: true,
     });
 
-    for (const image of images) {
+    for (const tag of tags) {
       let cparts = [];
       let isDigest = false;
-      if (image.includes("@")) {
-        cparts = image.split("@");
+      if (tag.includes("@")) {
+        cparts = tag.split("@");
         isDigest = true;
       } else {
-        cparts = image.split(":");
+        cparts = tag.split(":");
       }
 
       if (cparts.length === 1) {
@@ -32,12 +32,12 @@ async function run(): Promise<void> {
       if (cparts.length === 2) {
         const sparts = cparts[0].split("/");
         if (sparts.length < 3) {
-          throw new Error(`invalid image ${image}`);
+          throw new Error(`invalid image tag ${tag}`);
         }
 
         const [registry, username, ...rest] = sparts;
         if (registry !== "ghcr.io") {
-          throw new Error(`images must refer to ghcr.io, got ${image}`);
+          throw new Error(`image tags must refer to ghcr.io, got ${tag}`);
         }
 
         const package_name = rest.join("/");
@@ -45,7 +45,7 @@ async function run(): Promise<void> {
         const tagOrDigest = cparts[1];
 
         if (!username || !package_name || !tagOrDigest) {
-          throw new Error(`invalid image ${image}`);
+          throw new Error(`invalid image tag ${tag}`);
         }
 
         const packageVersions =
@@ -82,11 +82,11 @@ async function run(): Promise<void> {
           }
         } else {
           throw new Error(
-            `unable to find package version ID for image ${image}`,
+            `unable to find package version ID for image tag ${tag}`,
           );
         }
       } else {
-        throw new Error(`invalid image ${image}`);
+        throw new Error(`invalid image tag ${tag}`);
       }
     }
   } catch (err) {

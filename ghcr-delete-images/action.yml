@@ -10,10 +10,10 @@ inputs:
     description: |
       GitHub token to authenticate with. Must have read:packages and delete:packages scopes.
     default: ${{ github.token }}
-  images:
+  tags:
     description: |
-      Images to delete from ghcr.io.
+      Image tags to delete from ghcr.io.
     required: true
 runs:
   using: node20
-  main: ../dist/ghcr-delete-images/index.js
+  main: ./dist/index.js

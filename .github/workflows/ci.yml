@@ -38,7 +38,7 @@ jobs:
           password: ${{ secrets.GH_PAT }}
       - uses: ./ghcr-delete-images
         with:
-          images: |
+          tags: |
             ghcr.io/${{ github.repository }}/${{ steps.chart.outputs.name }}:${{ steps.chart.outputs.version }}
           token: ${{ secrets.GH_PAT }}
       - uses: ./helm-package-push
