@@ -331,9 +331,8 @@ async function run(): Promise<void> {
       const repository = new URL(
         core.getInput("repository", { required: true }),
       );
-      const scheme = repository.protocol.slice(0, -1);
 
-      const pusher = urlMux.open(scheme);
+      const pusher = urlMux.open(repository.toString());
       const insecure = core.getBooleanInput("insecure");
 
       await pusher.setup({ debug });
