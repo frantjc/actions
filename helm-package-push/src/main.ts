@@ -221,7 +221,7 @@ class ArtifactoryPusher extends Pusher {
     const chartBase = path.basename(opts.chartTgzPath);
 
     if (this.repository.protocol === "rt:") {
-      this.repository.protocol = `${process.env.RT_PROTOCOL || "https"}`;
+      this.repository.protocol = `${process.env.RT_SCHEME || "https"}`;
     }
 
     core.startGroup("builtin push");
