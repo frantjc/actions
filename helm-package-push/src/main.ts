@@ -46,6 +46,7 @@ abstract class Pusher {
   }
 
   async setup(_: SetupOpts): Promise<void> {}
+
   async login(opts: LoginOpts): Promise<void> {
     let repoAddArgs = ["repo", "add"];
 
@@ -79,7 +80,9 @@ abstract class Pusher {
     await cp.exec("helm", repoAddArgs);
     core.endGroup();
   }
+
   abstract push(_: PushOpts): Promise<string>;
+
   async logout(opts: LogoutOpts): Promise<void> {
     let repoRemoveArgs = ["repo", "remove", this.repositoryName];
 
@@ -91,6 +94,7 @@ abstract class Pusher {
     await cp.exec("helm", repoRemoveArgs);
     core.endGroup();
   }
+
   async cleanup(_: CleanupOpts): Promise<void> {}
 }
 

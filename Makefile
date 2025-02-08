@@ -1,7 +1,7 @@
 YARN = yarn
 GIT = git
 
-SEMVER ?= 0.1.2
+SEMVER ?= 1.0.0
 
 ifeq (,$(findstring -,$(SEMVER)))
 MAJOR = $(word 1,$(subst ., ,$(SEMVER)))
