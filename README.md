@@ -1,4 +1,4 @@
-# actions
+# actions [![CI](https://github.com/frantjc/actions/actions/workflows/ci.yml/badge.svg?branch=main&event=push)](https://github.com/frantjc/actions/actions)
 
 A collection of GitHub Actions amassed over the years which aren't big enough to merit their own repository but aren't small enough to rewrite for each project that needs it.
 
