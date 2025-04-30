@@ -38,7 +38,6 @@ type CleanupOpts = {
 };
 
 abstract class Pusher {
-  public repositoryName: string = "";
   public repository: URL;
 
   constructor(url: URL) {
@@ -48,46 +47,41 @@ abstract class Pusher {
   async setup(_: SetupOpts): Promise<void> {}
 
   async login(opts: LoginOpts): Promise<void> {
-    let repoAddArgs = ["repo", "add"];
+    const repoName = `${this.repository.hostname}-${crypto.randomUUID().toString()}`;
+
+    let repoAddArgs = ["repo", "add", repoName, this.repository.toString()];
 
     if (opts?.username && opts?.password) {
-      repoAddArgs = repoAddArgs.concat([
+      repoAddArgs = repoAddArgs.concat(
         "--username",
         opts.username,
         "--password",
         opts.password,
-      ]);
+      );
     }
 
     if (opts?.debug) {
-      repoAddArgs = repoAddArgs.concat(["--debug"]);
+      repoAddArgs = repoAddArgs.concat("--debug");
     }
 
     if (opts?.insecure) {
-      repoAddArgs = repoAddArgs.concat(["--insecure-skip-tls-verify"]);
+      repoAddArgs = repoAddArgs.concat("--insecure-skip-tls-verify");
     }
-
-    if (!this.repositoryName) {
-      this.repositoryName = `${this.repository.hostname}-${crypto.randomUUID().toString()}`;
-    }
-
-    repoAddArgs = repoAddArgs.concat([
-      this.repositoryName,
-      this.repository.toString(),
-    ]);
 
     core.startGroup("helm repo add");
     await cp.exec("helm", repoAddArgs);
     core.endGroup();
+
+    core.saveState("repoName", repoName);
   }
 
   abstract push(_: PushOpts): Promise<string>;
 
   async logout(opts: LogoutOpts): Promise<void> {
-    let repoRemoveArgs = ["repo", "remove", this.repositoryName];
+    let repoRemoveArgs = ["repo", "remove", core.getState("repoName")];
 
     if (opts?.debug) {
-      repoRemoveArgs = repoRemoveArgs.concat(["--debug"]);
+      repoRemoveArgs = repoRemoveArgs.concat("--debug");
     }
 
     core.startGroup("helm repo remove");
@@ -108,7 +102,7 @@ class ChartMuseumPusher extends Pusher {
     ];
 
     if (opts?.debug) {
-      pluginInstallArgs = pluginInstallArgs.concat(["--debug"]);
+      pluginInstallArgs = pluginInstallArgs.concat("--debug");
     }
 
     core.startGroup("helm plugin install");
@@ -125,10 +119,10 @@ class ChartMuseumPusher extends Pusher {
     ];
 
     if (opts?.insecure) {
-      cmPushArgs = cmPushArgs.concat(["--insecure"]);
+      cmPushArgs = cmPushArgs.concat("--insecure");
     }
 
-    cmPushArgs = cmPushArgs.concat([this.repositoryName]);
+    cmPushArgs = cmPushArgs.concat(core.getState("repoName"));
 
     core.startGroup("helm cm-push");
     await cp.exec("helm", cmPushArgs);
@@ -143,7 +137,7 @@ class ChartMuseumPusher extends Pusher {
     let pluginUninstallArgs = ["plugin", "uninstall", "cm-push"];
 
     if (opts?.debug) {
-      pluginUninstallArgs = pluginUninstallArgs.concat(["--debug"]);
+      pluginUninstallArgs = pluginUninstallArgs.concat("--debug");
     }
 
     core.startGroup("helm plugin uninstall");
@@ -157,20 +151,20 @@ class OCIPusher extends Pusher {
     let registryLoginArgs = ["registry", "login", this.repository.host];
 
     if (opts?.username && opts?.password) {
-      registryLoginArgs = registryLoginArgs.concat([
+      registryLoginArgs = registryLoginArgs.concat(
         "--username",
         opts.username,
         "--password",
         opts.password,
-      ]);
+      );
     }
 
     if (opts?.debug) {
-      registryLoginArgs = registryLoginArgs.concat(["--debug"]);
+      registryLoginArgs = registryLoginArgs.concat("--debug");
     }
 
     if (opts?.insecure) {
-      registryLoginArgs = registryLoginArgs.concat(["--insecure"]);
+      registryLoginArgs = registryLoginArgs.concat("--insecure");
     }
 
     core.startGroup("helm registry login");
@@ -182,11 +176,11 @@ class OCIPusher extends Pusher {
     let pushArgs = ["push", opts.chartTgzPath, this.repository.toString()];
 
     if (opts?.debug) {
-      pushArgs = pushArgs.concat(["--debug"]);
+      pushArgs = pushArgs.concat("--debug");
     }
 
     if (opts?.insecure) {
-      pushArgs = pushArgs.concat(["--insecure-skip-tls-verify"]);
+      pushArgs = pushArgs.concat("--insecure-skip-tls-verify");
     }
 
     core.startGroup("helm push");
@@ -200,7 +194,7 @@ class OCIPusher extends Pusher {
     let registryLogoutArgs = ["registry", "logout", this.repository.host];
 
     if (opts?.debug) {
-      registryLogoutArgs = registryLogoutArgs.concat(["--debug"]);
+      registryLogoutArgs = registryLogoutArgs.concat("--debug");
     }
 
     core.startGroup("helm registry logout");
@@ -258,7 +252,7 @@ class URLMux<T> {
   private handlers = new Map<string, URLOpener<T>>();
 
   register(opener: URLOpener<T>, scheme: string, ...schemes: string[]): void {
-    for (const s of schemes.concat([scheme])) {
+    for (const s of schemes.concat(scheme)) {
       this.handlers.set(s, opener);
     }
   }
@@ -281,9 +275,6 @@ urlMux.register(new URLOpener(ChartMuseumPusher), "cm");
 urlMux.register(new URLOpener(OCIPusher), "oci");
 urlMux.register(new URLOpener(ArtifactoryPusher), "rt", "https", "http");
 
-const repoNamePrefix =
-  process.env.GITHUB_RUN_ID || Math.random().toString(36).slice(2, 10);
-
 async function run(): Promise<void> {
   try {
     let chartPath = core.getInput("chart-path", { required: true });
@@ -303,24 +294,24 @@ async function run(): Promise<void> {
 
     const debug = core.isDebug();
     if (debug) {
-      packageArgs = packageArgs.concat(["--debug"]);
+      packageArgs = packageArgs.concat("--debug");
     }
 
     const version = core.getInput("version");
     if (version) {
-      packageArgs = packageArgs.concat(["--version", version]);
+      packageArgs = packageArgs.concat("--version", version);
       chartVersion = version;
     }
 
     const appVersion = core.getInput("app-version");
     if (appVersion) {
-      packageArgs = packageArgs.concat(["--app-version", appVersion]);
+      packageArgs = packageArgs.concat("--app-version", appVersion);
       chartAppVersion = appVersion;
     }
 
     const destination = process.env.RUNNER_TEMP;
     if (destination) {
-      packageArgs = packageArgs.concat(["--destination", destination]);
+      packageArgs = packageArgs.concat("--destination", destination);
     }
 
     const chartBase = `${chartName}-${chartVersion}.tgz`;
@@ -339,6 +330,8 @@ async function run(): Promise<void> {
     if (dependencyUpdate) {
       const lenDeps = chartYAML.dependencies?.length || 0;
 
+      let repoNames: string[] = [];
+
       if (lenDeps > 0) {
         for (let i = 0; i < lenDeps; i++) {
           const depRepository = new URL(chartYAML.dependencies[i].repository);
@@ -347,41 +340,37 @@ async function run(): Promise<void> {
             throw new Error(`Chart.yaml dependency ${i} has no repository`);
           }
 
-          let repoAddArgs = [
-            "repo",
-            "add",
-            `${repoNamePrefix}-${i}`,
-            depRepository.toString(),
-          ];
+          const repoName = `${depRepository.hostname}-${crypto.randomUUID().toString()}`;
+
+          let repoAddArgs = ["repo", "add", repoName, depRepository.toString()];
 
           if (
             depRepository.origin === repository.origin &&
             username &&
             password
           ) {
-            repoAddArgs = repoAddArgs.concat([
+            repoAddArgs = repoAddArgs.concat(
               "--username",
               username,
               "--password",
               password,
-            ]);
+            );
           }
 
           if (insecure) {
-            repoAddArgs = repoAddArgs.concat(["--insecure-skip-tls-verify"]);
+            repoAddArgs = repoAddArgs.concat("--insecure-skip-tls-verify");
           }
 
           core.startGroup(`helm repo add ${depRepository.toString()}`);
-          await cp.exec("helm", [
-            "repo",
-            "add",
-            `${repoNamePrefix}-${i}`,
-            depRepository.toString(),
-          ]);
+          await cp.exec("helm", repoAddArgs);
           core.endGroup();
+
+          repoNames = repoNames.concat(repoName);
         }
 
-        packageArgs = packageArgs.concat(["--dependency-update"]);
+        core.saveState("dependencyRepoNames", JSON.stringify(repoNames));
+
+        packageArgs = packageArgs.concat("--dependency-update");
       }
     }
 
@@ -419,14 +408,6 @@ async function run(): Promise<void> {
       });
 
       core.setOutput("chart", chart);
-
-      await pusher.logout({
-        debug,
-      });
-
-      await pusher.cleanup({
-        debug,
-      });
     }
   } catch (err) {
     if (typeof err === "string" || err instanceof Error) {
@@ -439,25 +420,37 @@ async function run(): Promise<void> {
 
 async function cleanup(): Promise<void> {
   try {
-    let chartPath = core.getInput("chart-path", { required: true });
-
-    const workspace = process.env.GITHUB_WORKSPACE || process.cwd();
-    if (!path.isAbsolute(chartPath) && workspace) {
-      chartPath = path.join(workspace, chartPath);
-    }
-
-    const chartYAMLPath = path.join(chartPath, "Chart.yaml");
-    const chartYAML = yaml.parse(fs.readFileSync(chartYAMLPath).toString());
-
     const dependencyUpdate = core.getBooleanInput("dependency-update");
     if (dependencyUpdate) {
-      const lenDeps = chartYAML.dependencies?.length || 0;
+      const repoNames = JSON.parse(core.getState("dependencyRepoNames"));
 
-      for (let i = 0; i < lenDeps; i++) {
-        core.startGroup(`helm repo rm ${i}`);
-        await cp.exec("helm", ["repo", "rm", `${repoNamePrefix}-${i}`]);
+      for (let i = 0; i < repoNames.length; i++) {
+        const repoName = repoNames[i];
+
+        core.startGroup(`helm repo rm ${repoName}`);
+        await cp.exec("helm", ["repo", "rm", repoName]);
         core.endGroup();
       }
+    }
+
+    const push = core.getBooleanInput("push");
+
+    if (push) {
+      const repository = new URL(
+        core.getInput("repository", { required: true }),
+      );
+
+      const pusher = urlMux.open(repository.toString());
+
+      const debug = core.isDebug();
+
+      await pusher.logout({
+        debug,
+      });
+
+      await pusher.cleanup({
+        debug,
+      });
     }
   } catch (err) {
     if (typeof err === "string" || err instanceof Error) {
