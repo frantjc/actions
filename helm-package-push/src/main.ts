@@ -281,6 +281,9 @@ urlMux.register(new URLOpener(ChartMuseumPusher), "cm");
 urlMux.register(new URLOpener(OCIPusher), "oci");
 urlMux.register(new URLOpener(ArtifactoryPusher), "rt", "https", "http");
 
+const repoNamePrefix =
+  process.env.GITHUB_RUN_ID || Math.random().toString(36).slice(2, 10);
+
 async function run(): Promise<void> {
   try {
     let chartPath = core.getInput("chart-path", { required: true });
@@ -309,6 +312,12 @@ async function run(): Promise<void> {
       chartVersion = version;
     }
 
+    const appVersion = core.getInput("app-version");
+    if (appVersion) {
+      packageArgs = packageArgs.concat(["--app-version", appVersion]);
+      chartAppVersion = appVersion;
+    }
+
     const destination = process.env.RUNNER_TEMP;
     if (destination) {
       packageArgs = packageArgs.concat(["--destination", destination]);
@@ -320,15 +329,60 @@ async function run(): Promise<void> {
       chartTgzPath = path.join(destination, chartBase);
     }
 
+    const repository = new URL(core.getInput("repository", { required: true }));
+
+    const username = core.getInput("username");
+    const password = core.getInput("password");
+    const insecure = core.getBooleanInput("insecure");
+
     const dependencyUpdate = core.getBooleanInput("dependency-update");
     if (dependencyUpdate) {
-      packageArgs = packageArgs.concat(["--dependency-update"]);
-    }
+      const lenDeps = chartYAML.dependencies?.length || 0;
 
-    const appVersion = core.getInput("app-version");
-    if (appVersion) {
-      packageArgs = packageArgs.concat(["--app-version", appVersion]);
-      chartAppVersion = appVersion;
+      if (lenDeps > 0) {
+        for (let i = 0; i < lenDeps; i++) {
+          const depRepository = new URL(chartYAML.dependencies[i].repository);
+
+          if (!depRepository) {
+            throw new Error(`Chart.yaml dependency ${i} has no repository`);
+          }
+
+          let repoAddArgs = [
+            "repo",
+            "add",
+            `${repoNamePrefix}-${i}`,
+            depRepository.toString(),
+          ];
+
+          if (
+            depRepository.origin === repository.origin &&
+            username &&
+            password
+          ) {
+            repoAddArgs = repoAddArgs.concat([
+              "--username",
+              username,
+              "--password",
+              password,
+            ]);
+          }
+
+          if (insecure) {
+            repoAddArgs = repoAddArgs.concat(["--insecure-skip-tls-verify"]);
+          }
+
+          core.startGroup(`helm repo add ${depRepository.toString()}`);
+          await cp.exec("helm", [
+            "repo",
+            "add",
+            `${repoNamePrefix}-${i}`,
+            depRepository.toString(),
+          ]);
+          core.endGroup();
+        }
+
+        packageArgs = packageArgs.concat(["--dependency-update"]);
+      }
     }
 
     core.startGroup("helm package");
@@ -343,17 +397,9 @@ async function run(): Promise<void> {
     const push = core.getBooleanInput("push");
 
     if (push) {
-      const repository = new URL(
-        core.getInput("repository", { required: true }),
-      );
-
       const pusher = urlMux.open(repository.toString());
-      const insecure = core.getBooleanInput("insecure");
 
       await pusher.setup({ debug });
-
-      const username = core.getInput("username");
-      const password = core.getInput("password");
 
       await pusher.login({
         username,
@@ -391,4 +437,42 @@ async function run(): Promise<void> {
   }
 }
 
-run();
+async function cleanup(): Promise<void> {
+  try {
+    let chartPath = core.getInput("chart-path", { required: true });
+
+    const workspace = process.env.GITHUB_WORKSPACE || process.cwd();
+    if (!path.isAbsolute(chartPath) && workspace) {
+      chartPath = path.join(workspace, chartPath);
+    }
+
+    const chartYAMLPath = path.join(chartPath, "Chart.yaml");
+    const chartYAML = yaml.parse(fs.readFileSync(chartYAMLPath).toString());
+
+    const dependencyUpdate = core.getBooleanInput("dependency-update");
+    if (dependencyUpdate) {
+      const lenDeps = chartYAML.dependencies?.length || 0;
+
+      for (let i = 0; i < lenDeps; i++) {
+        core.startGroup(`helm repo rm ${i}`);
+        await cp.exec("helm", ["repo", "rm", `${repoNamePrefix}-${i}`]);
+        core.endGroup();
+      }
+    }
+  } catch (err) {
+    if (typeof err === "string" || err instanceof Error) {
+      core.setFailed(err);
+    } else {
+      core.setFailed(`caught unknown error ${err}`);
+    }
+  }
+}
+
+const isPost = !!core.getState("isPost");
+
+if (!isPost) {
+  run();
+  core.saveState("isPost", "true");
+} else {
+  cleanup();
+}
