@@ -39,17 +39,22 @@ type CleanupOpts = {
 
 abstract class Pusher {
   public repository: URL;
+  public repoName: string;
 
   constructor(url: URL) {
     this.repository = url;
+    this.repoName = `${this.repository.hostname}-${crypto.randomUUID().toString()}`;
   }
 
   async setup(_: SetupOpts): Promise<void> {}
 
   async login(opts: LoginOpts): Promise<void> {
-    const repoName = `${this.repository.hostname}-${crypto.randomUUID().toString()}`;
-
-    let repoAddArgs = ["repo", "add", repoName, this.repository.toString()];
+    let repoAddArgs = [
+      "repo",
+      "add",
+      this.repoName,
+      this.repository.toString(),
+    ];
 
     if (opts?.username && opts?.password) {
       repoAddArgs = repoAddArgs.concat(
@@ -72,7 +77,7 @@ abstract class Pusher {
     await cp.exec("helm", repoAddArgs);
     core.endGroup();
 
-    core.saveState("repoName", repoName);
+    core.saveState("repoName", this.repoName);
   }
 
   abstract push(_: PushOpts): Promise<string>;
@@ -122,7 +127,7 @@ class ChartMuseumPusher extends Pusher {
       cmPushArgs = cmPushArgs.concat("--insecure");
     }
 
-    cmPushArgs = cmPushArgs.concat(core.getState("repoName"));
+    cmPushArgs = cmPushArgs.concat(this.repoName);
 
     core.startGroup("helm cm-push");
     await cp.exec("helm", cmPushArgs);
