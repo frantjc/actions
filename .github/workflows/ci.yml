@@ -8,6 +8,7 @@ on:
       - dist/**
       - helm-package-push/**
       - ghcr-delete-images/**
+      - testdata/**
       - package*.json
   pull_request:
     branches:
@@ -36,6 +37,7 @@ jobs:
           repository: oci://ghcr.io/${{ github.repository }}
           username: ${{ github.actor }}
           password: ${{ secrets.GH_PAT }}
+          dependency-update: true
       - uses: ./ghcr-delete-images
         with:
           tags: |
@@ -45,5 +47,6 @@ jobs:
         with:
           chart-path: testdata/chart
           repository: cm://localhost:8080/
+          dependency-update: true
         env:
           HELM_REPO_USE_HTTP: "true"
