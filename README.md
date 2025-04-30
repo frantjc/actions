@@ -9,7 +9,7 @@ A collection of GitHub Actions amassed over the years which aren't big enough to
 Delete container images from the ghcr.io registry using GitHub's API. If this is the last version of this package, deletes the package.
 
 ```yml
-- uses: frantjc/actions/ghcr-delete-images@v0
+- uses: frantjc/actions/ghcr-delete-images@v1
   with:
     # GitHub token to authenticate with.
     # Must have read:packages and delete:packages scopes.
@@ -29,16 +29,18 @@ Package and push a Helm Chart to an OCI, ChartMuseum or JFrog-Artifactory-compat
 # This action relies on `helm` being installed to work.
 # The simplest way to do this is via https://github.com/azure/setup-helm.
 #   - uses: azure/setup-helm@v4
-- uses: frantjc/actions/helm-package-push@v0
+- uses: frantjc/actions/helm-package-push@v1
   with:
     # Path to chart to package and push. Required.
     chart-path: .
     # Whether or not to push the packaged chart. Default true.
     push: true
     # Repository to authenticate and push the chart to.
-    # Receives HTTP PUT with the Helm Chart .tgz to the path
-    # /$CHART_NAME-$CHART_VERSION.tz with Basic Authentication
-    # if username and password are specified. Required if push is true.
+    # http(s) repositories receive an HTTP PUT with
+    # the Helm Chart .tgz  as the body to the path
+    # /$CHART_NAME-$CHART_VERSION.tgz
+    # with Basic Authentication if username and password are
+    # specified. Required if push is true.
     # More examples:
     #  - cm://chartmuseum.mycorp.net/
     #  - oci://ghcr.io/frantjc/actions
@@ -53,6 +55,6 @@ Package and push a Helm Chart to an OCI, ChartMuseum or JFrog-Artifactory-compat
     username: ${{ secrets.HELM_REPO_USERNAME }}
     # Repository password or identity token.
     password: ${{ secrets.HELM_REPO_PASSWORD }}
-    # Allow connections to TLS repository without certs. Default false.
+    # Allow connections to TLS repositories without certificate validation. Default false.
     insecure: false
 ```
