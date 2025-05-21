@@ -44,9 +44,7 @@ abstract class Pusher {
 
   constructor(url: URL) {
     this.repository = url;
-    this.repoName =
-      core.getState("repoName") ||
-      `${this.repository.hostname}-${crypto.randomUUID().toString()}`;
+    this.repoName = `${this.repository.hostname}-${crypto.randomUUID().toString()}`;
   }
 
   async setup(_: SetupOpts): Promise<void> {}
@@ -86,15 +84,19 @@ abstract class Pusher {
   abstract push(_: PushOpts): Promise<string>;
 
   async logout(opts: LogoutOpts): Promise<void> {
-    let repoRemoveArgs = ["repo", "remove", this.repoName];
+    const repoName = core.getState("repoName");
 
-    if (opts?.debug) {
-      repoRemoveArgs = repoRemoveArgs.concat("--debug");
+    if (repoName !== "") {
+      let repoRemoveArgs = ["repo", "remove", this.repoName];
+
+      if (opts?.debug) {
+        repoRemoveArgs = repoRemoveArgs.concat("--debug");
+      }
+
+      core.startGroup(`helm repo remove ${this.repoName}`);
+      await cp.exec("helm", repoRemoveArgs);
+      core.endGroup();
     }
-
-    core.startGroup(`helm repo remove ${this.repoName}`);
-    await cp.exec("helm", repoRemoveArgs);
-    core.endGroup();
   }
 
   async cleanup(_: CleanupOpts): Promise<void> {}
