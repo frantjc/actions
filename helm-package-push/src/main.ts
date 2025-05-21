@@ -123,6 +123,7 @@ class ChartMuseumPusher extends Pusher {
       opts.chartTgzPath,
       `--version=${opts.chartVersion}`,
       `--context-path=${this.repository.pathname}`,
+      this.repoName,
     ];
 
     if (opts?.insecure) {

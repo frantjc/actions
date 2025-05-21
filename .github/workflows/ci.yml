@@ -31,7 +31,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: azure/setup-helm@v4
       - uses: ./helm-package-push
-        id: chart
+        id: ghcr
         with:
           chart-path: testdata/charts/valid
           repository: oci://ghcr.io/${{ github.repository }}
@@ -40,7 +40,7 @@ jobs:
       - uses: ./ghcr-delete-images
         with:
           tags: |
-            ghcr.io/${{ github.repository }}/${{ steps.chart.outputs.name }}:${{ steps.chart.outputs.version }}
+            ghcr.io/${{ github.repository }}/${{ steps.ghcr.outputs.name }}:${{ steps.ghcr.outputs.version }}
           token: ${{ secrets.GH_PAT }}
       - uses: ./helm-package-push
         with:
