@@ -43,7 +43,9 @@ abstract class Pusher {
 
   constructor(url: URL) {
     this.repository = url;
-    this.repoName = `${this.repository.hostname}-${crypto.randomUUID().toString()}`;
+    this.repoName =
+      core.getState("repoName") ??
+      `${this.repository.hostname}-${crypto.randomUUID().toString()}`;
   }
 
   async setup(_: SetupOpts): Promise<void> {}
@@ -83,13 +85,13 @@ abstract class Pusher {
   abstract push(_: PushOpts): Promise<string>;
 
   async logout(opts: LogoutOpts): Promise<void> {
-    let repoRemoveArgs = ["repo", "remove", core.getState("repoName")];
+    let repoRemoveArgs = ["repo", "remove", this.repoName];
 
     if (opts?.debug) {
       repoRemoveArgs = repoRemoveArgs.concat("--debug");
     }
 
-    core.startGroup("helm repo remove");
+    core.startGroup(`helm repo remove ${this.repoName}`);
     await cp.exec("helm", repoRemoveArgs);
     core.endGroup();
   }
@@ -335,47 +337,67 @@ async function run(): Promise<void> {
     if (dependencyUpdate) {
       let repoNames: string[] = [];
 
-      for (const dependency of chartYAML.dependencies) {
-        if (dependency.repository) {
+      if (Array.isArray(chartYAML.dependencies)) {
+        for (const dependency of chartYAML.dependencies) {
           const dependencyRepository = new URL(dependency.repository);
 
-          const repoName = `${dependencyRepository.hostname}-${crypto.randomUUID().toString()}`;
+          switch (dependencyRepository.protocol) {
+            case "file:":
+              core.info(
+                `Skipping helm repo add for local dependency ${dependency.name}`,
+              );
 
-          let repoAddArgs = [
-            "repo",
-            "add",
-            repoName,
-            dependencyRepository.toString(),
-          ];
+              break;
+            case "http:":
+            case "https:":
+              const repoName = `${dependencyRepository.hostname}-${crypto.randomUUID().toString()}`;
 
-          if (
-            dependencyRepository.origin === repository.origin &&
-            username &&
-            password
-          ) {
-            repoAddArgs = repoAddArgs.concat(
-              "--username",
-              username,
-              "--password",
-              password,
-            );
+              let repoAddArgs = [
+                "repo",
+                "add",
+                repoName,
+                dependencyRepository.toString(),
+              ];
+
+              if (
+                dependencyRepository.origin === repository.origin &&
+                username &&
+                password
+              ) {
+                repoAddArgs = repoAddArgs.concat(
+                  "--username",
+                  username,
+                  "--password",
+                  password,
+                );
+              }
+
+              if (insecure) {
+                repoAddArgs = repoAddArgs.concat("--insecure-skip-tls-verify");
+              }
+
+              core.startGroup(
+                `helm repo add ${dependencyRepository.toString()}`,
+              );
+              await cp.exec("helm", repoAddArgs);
+              core.endGroup();
+
+              repoNames = repoNames.concat(repoName);
+
+              core.saveState("dependencyRepoNames", JSON.stringify(repoNames));
+
+              break;
+            default:
+              core.warning(
+                `Skipping helm repo add due to unknown scheme ${dependencyRepository.protocol} in dependency ${dependency.name}`,
+              );
           }
-
-          if (insecure) {
-            repoAddArgs = repoAddArgs.concat("--insecure-skip-tls-verify");
-          }
-
-          core.startGroup(`helm repo add ${dependencyRepository.toString()}`);
-          await cp.exec("helm", repoAddArgs);
-          core.endGroup();
-
-          repoNames = repoNames.concat(repoName);
-
-          core.saveState("dependencyRepoNames", JSON.stringify(repoNames));
         }
-      }
 
-      packageArgs = packageArgs.concat("--dependency-update");
+        packageArgs = packageArgs.concat("--dependency-update");
+      }
+    } else if (chartYAML.dependencies) {
+      throw new Error(`${chartYAMLPath} dependencies are invalid`);
     }
 
     core.startGroup("helm package");
@@ -424,15 +446,21 @@ async function run(): Promise<void> {
 
 async function cleanup(): Promise<void> {
   try {
+    const debug = core.isDebug();
+
     const dependencyUpdate = core.getBooleanInput("dependency-update");
     if (dependencyUpdate) {
       const repoNames = JSON.parse(core.getState("dependencyRepoNames"));
 
-      for (let i = 0; i < repoNames.length; i++) {
-        const repoName = repoNames[i];
+      for (const repoName in repoNames) {
+        let repoRemoveArgs = ["repo", "remove", repoName];
 
-        core.startGroup(`helm repo rm ${repoName}`);
-        await cp.exec("helm", ["repo", "rm", repoName]);
+        if (debug) {
+          repoRemoveArgs = repoRemoveArgs.concat("--debug");
+        }
+
+        core.startGroup(`helm repo remove ${repoName}`);
+        await cp.exec("helm", repoRemoveArgs);
         core.endGroup();
       }
     }
@@ -445,8 +473,6 @@ async function cleanup(): Promise<void> {
       );
 
       const pusher = urlMux.open(repository.toString());
-
-      const debug = core.isDebug();
 
       await pusher.logout({
         debug,
@@ -467,9 +493,9 @@ async function cleanup(): Promise<void> {
 
 const isPost = !!core.getState("isPost");
 
-if (!isPost) {
-  run();
-  core.saveState("isPost", "true");
-} else {
+if (isPost) {
   cleanup();
+} else {
+  core.saveState("isPost", "true");
+  run();
 }
