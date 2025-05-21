@@ -105,20 +105,21 @@ abstract class Pusher {
 type HelmPlugin = {
   name: string;
   version: string;
-  description: string;
 };
 
 function parseHelmPluginList(output: string): Array<HelmPlugin> {
   const lines = output.trim().split("\n");
-  if (lines.length > 0) {
-    const headers = lines[0].split(/\s/).map((h) => h.trim());
+
+  if (lines.length > 1) {
     return lines.slice(1).map((line) => {
-      const cols = line.split(/\s/).map((c) => c.trim());
-      return Object.fromEntries(
-        headers.map((h, i) => [h.toLowerCase(), cols[i]]),
-      );
-    }) as Array<HelmPlugin>;
+      const cols = line.split(/\s+/).map((c) => c.trim());
+      return {
+        name: cols[0],
+        version: cols[1],
+      };
+    });
   }
+
   return [];
 }
 
@@ -126,21 +127,22 @@ class ChartMuseumPusher extends Pusher {
   async setup(opts?: SetupOpts): Promise<void> {
     let pluginListOutput = "";
 
-    const outStream = new Writable({
-      write(chunk, _, callback) {
-        pluginListOutput += chunk.toString();
-        callback();
+    await cp.exec("helm", ["plugin", "list"], {
+      silent: true,
+      listeners: {
+        stdout: (data) => {
+          pluginListOutput += data;
+        },
       },
     });
 
-    await cp.exec("helm", ["plugin", "list"], { outStream });
-
-    const pluginVersion = process.env.CM_PLUGIN_VERSION || "v0.10.4";
-
     const installedPlugins = parseHelmPluginList(pluginListOutput);
 
+    const pluginVersion = process.env.CM_PLUGIN_VERSION || "v0.10.4";
+    const displayPluginVersion = pluginVersion.slice(1);
+
     const alreadyInstalled = installedPlugins.some((plugin) => {
-      plugin.name === "cm-push" && plugin.version === pluginVersion.slice(1);
+      plugin.name === "cm-push" && plugin.version === displayPluginVersion;
     });
 
     if (alreadyInstalled) {
@@ -149,7 +151,7 @@ class ChartMuseumPusher extends Pusher {
     }
 
     const wrongVersion = installedPlugins.some((plugin) => {
-      plugin.name === "cm-push" && plugin.version !== pluginVersion.slice(1);
+      plugin.name === "cm-push" && plugin.version !== displayPluginVersion;
     });
 
     if (wrongVersion) {
