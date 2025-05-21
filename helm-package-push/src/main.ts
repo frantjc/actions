@@ -123,7 +123,6 @@ class ChartMuseumPusher extends Pusher {
       opts.chartTgzPath,
       `--version=${opts.chartVersion}`,
       `--context-path=${this.repository.pathname}`,
-      this.repoName,
     ];
 
     if (opts?.insecure) {
@@ -451,7 +450,9 @@ async function cleanup(): Promise<void> {
 
     const dependencyUpdate = core.getBooleanInput("dependency-update");
     if (dependencyUpdate) {
-      const repoNames = JSON.parse(core.getState("dependencyRepoNames"));
+      const repoNames = JSON.parse(
+        core.getState("dependencyRepoNames") || "[]",
+      );
 
       for (const repoName in repoNames) {
         let repoRemoveArgs = ["repo", "remove", repoName];
