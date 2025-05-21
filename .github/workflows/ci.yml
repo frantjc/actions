@@ -44,27 +44,27 @@ jobs:
           token: ${{ secrets.GH_PAT }}
       - uses: ./helm-package-push
         with:
-          chart-path: testdata/chart/valid
+          chart-path: testdata/charts/valid
           repository: cm://localhost:8080/
         env:
           HELM_REPO_USE_HTTP: "true"
       - uses: ./helm-package-push
         with:
-          chart-path: testdata/chart/valid
+          chart-path: testdata/charts/valid
           repository: cm://localhost:8080/
           dependency-update: false
         env:
           HELM_REPO_USE_HTTP: "true"
       - uses: ./helm-package-push
         with:
-          chart-path: testdata/chart/valid-dependency
+          chart-path: testdata/charts/valid-dependency
           repository: cm://localhost:8080/
         env:
           HELM_REPO_USE_HTTP: "true"
       - uses: ./helm-package-push
         continue-on-error: true
         with:
-          chart-path: testdata/chart/valid-dependency
+          chart-path: testdata/charts/valid-dependency
           repository: cm://localhost:8080/
           dependency-update: false
         env:
@@ -72,7 +72,7 @@ jobs:
       - uses: ./helm-package-push
         continue-on-error: true
         with:
-          chart-path: testdata/chart/invalid-dependency
+          chart-path: testdata/charts/invalid-dependency
           repository: cm://localhost:8080/
         env:
           HELM_REPO_USE_HTTP: "true"
