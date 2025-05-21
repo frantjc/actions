@@ -7,6 +7,7 @@ import yaml from "yaml";
 import undici from "undici";
 import http from "http";
 import crypto from "crypto";
+import { Writable } from "stream";
 
 type SetupOpts = {
   debug?: boolean;
@@ -99,13 +100,75 @@ abstract class Pusher {
   async cleanup(_: CleanupOpts): Promise<void> {}
 }
 
+type HelmPlugin = {
+  name: string;
+  version: string;
+  description: string;
+};
+
+function parseHelmPluginList(output: string): Array<HelmPlugin> {
+  const lines = output.trim().split("\n");
+  if (lines.length > 0) {
+    const headers = lines[0].split(/\s/).map((h) => h.trim());
+    return lines.slice(1).map((line) => {
+      const cols = line.split(/\s/).map((c) => c.trim());
+      return Object.fromEntries(
+        headers.map((h, i) => [h.toLowerCase(), cols[i]]),
+      );
+    }) as Array<HelmPlugin>;
+  }
+  return [];
+}
+
 class ChartMuseumPusher extends Pusher {
   async setup(opts?: SetupOpts): Promise<void> {
+    let pluginListOutput = "";
+
+    const outStream = new Writable({
+      write(chunk, _, callback) {
+        pluginListOutput += chunk.toString();
+        callback();
+      },
+    });
+
+    await cp.exec("helm", ["plugin", "list"], { outStream });
+
+    const pluginVersion = process.env.CM_PLUGIN_VERSION || "v0.10.4";
+
+    const installedPlugins = parseHelmPluginList(pluginListOutput);
+
+    const alreadyInstalled = installedPlugins.some((plugin) => {
+      plugin.name === "cm-push" && plugin.version === pluginVersion.slice(1);
+    });
+
+    if (alreadyInstalled) {
+      core.info(`helm cm-push plugin already installed`);
+      return;
+    }
+
+    const wrongVersion = installedPlugins.some((plugin) => {
+      plugin.name === "cm-push" && plugin.version !== pluginVersion.slice(1);
+    });
+
+    if (wrongVersion) {
+      core.info(`uninstalling incorrect version of helm cm-push plugin`);
+
+      let pluginUninstallArgs = ["plugin", "uninstall", "cm-push"];
+
+      if (opts?.debug) {
+        pluginUninstallArgs = pluginUninstallArgs.concat("--debug");
+      }
+
+      core.startGroup("helm plugin uninstall");
+      await cp.exec("helm", pluginUninstallArgs);
+      core.endGroup();
+    }
+
     let pluginInstallArgs = [
       "plugin",
       "install",
       "https://github.com/chartmuseum/helm-push",
-      `--version=${process.env.CM_PLUGIN_VERSION || "v0.10.4"}`,
+      `--version=${pluginVersion}`,
     ];
 
     if (opts?.debug) {
