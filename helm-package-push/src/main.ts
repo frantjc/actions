@@ -414,6 +414,8 @@ async function run(): Promise<void> {
 
     const dependencyUpdate = core.getBooleanInput("dependency-update");
     if (dependencyUpdate) {
+      core.info("Setting up dependencies");
+
       let repoNames: string[] = [];
 
       if (Array.isArray(chartYAML.dependencies)) {
@@ -479,6 +481,8 @@ async function run(): Promise<void> {
       throw new Error(`${chartYAMLPath} dependencies are invalid`);
     }
 
+    core.info("Packaging chart");
+
     core.startGroup("helm package");
     await cp.exec("helm", packageArgs);
     core.endGroup();
@@ -493,10 +497,12 @@ async function run(): Promise<void> {
     if (push) {
       const pusher = urlMux.open(repository.toString());
 
-      core.info("setup");
+      core.info("Setting up");
+
       await pusher.setup({ debug });
 
-      core.info("login");
+      core.info("Logging in");
+
       await pusher.login({
         username,
         password,
@@ -504,7 +510,8 @@ async function run(): Promise<void> {
         insecure,
       });
 
-      core.info("push");
+      core.info("Pushing chart");
+
       const chart = await pusher.push({
         chartTgzPath,
         chartName,
@@ -532,6 +539,8 @@ async function cleanup(): Promise<void> {
 
     const dependencyUpdate = core.getBooleanInput("dependency-update");
     if (dependencyUpdate) {
+      core.info("Tearing down dependencies");
+
       const repoNames = JSON.parse(
         core.getState("dependencyRepoNames") || "[]",
       );
@@ -558,12 +567,14 @@ async function cleanup(): Promise<void> {
 
       const pusher = urlMux.open(repository.toString());
 
-      core.info("logout");
+      core.info("Logging out");
+
       await pusher.logout({
         debug,
       });
 
-      core.info("cleanup");
+      core.info("Cleaning up");
+
       await pusher.cleanup({
         debug,
       });
