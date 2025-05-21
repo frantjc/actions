@@ -105,6 +105,7 @@ abstract class Pusher {
 type HelmPlugin = {
   name: string;
   version: string;
+  description: string;
 };
 
 function parseHelmPluginList(output: string): Array<HelmPlugin> {
@@ -112,10 +113,16 @@ function parseHelmPluginList(output: string): Array<HelmPlugin> {
 
   if (lines.length > 1) {
     return lines.slice(1).map((line) => {
-      const cols = line.split(/\s+/).map((c) => c.trim());
+      const cols = line.split(/\t/).map((c) => c.trim());
+
+      if (cols.length < 3) {
+        throw new Error(`invalid helm plugin list output: ${line}`);
+      }
+
       return {
         name: cols[0],
         version: cols[1],
+        description: cols[2],
       };
     });
   }
@@ -125,10 +132,9 @@ function parseHelmPluginList(output: string): Array<HelmPlugin> {
 
 class ChartMuseumPusher extends Pusher {
   async setup(opts?: SetupOpts): Promise<void> {
-    core.info("what is going on");
-
     let pluginListOutput = "";
 
+    core.startGroup("helm plugin list");
     await cp.exec("helm", ["plugin", "list"], {
       listeners: {
         stdout: (data) => {
@@ -136,6 +142,7 @@ class ChartMuseumPusher extends Pusher {
         },
       },
     });
+    core.endGroup();
 
     const installedPlugins = parseHelmPluginList(pluginListOutput);
 
