@@ -408,15 +408,15 @@ async function run(): Promise<void> {
         for (const dependency of chartYAML.dependencies) {
           const dependencyRepository = new URL(dependency.repository);
 
-          switch (dependencyRepository.protocol) {
-            case "file:":
+          switch (dependencyRepository.protocol.slice(0, -1)) {
+            case "file":
               core.info(
                 `Skipping helm repo add for local dependency ${dependency.name}`,
               );
 
               break;
-            case "http:":
-            case "https:":
+            case "http":
+            case "https":
               const repoName = `${dependencyRepository.hostname}-${crypto.randomUUID().toString()}`;
 
               let repoAddArgs = [
@@ -481,8 +481,10 @@ async function run(): Promise<void> {
     if (push) {
       const pusher = urlMux.open(repository.toString());
 
+      core.info("setup");
       await pusher.setup({ debug });
 
+      core.info("login");
       await pusher.login({
         username,
         password,
@@ -490,6 +492,7 @@ async function run(): Promise<void> {
         insecure,
       });
 
+      core.info("push");
       const chart = await pusher.push({
         chartTgzPath,
         chartName,
@@ -543,10 +546,12 @@ async function cleanup(): Promise<void> {
 
       const pusher = urlMux.open(repository.toString());
 
+      core.info("logout");
       await pusher.logout({
         debug,
       });
 
+      core.info("cleanup");
       await pusher.cleanup({
         debug,
       });
