@@ -144,7 +144,11 @@ class ChartMuseumPusher extends Pusher {
     });
     core.endGroup();
 
+    core.info(pluginListOutput);
+
     const installedPlugins = parseHelmPluginList(pluginListOutput);
+
+    core.info(JSON.stringify(installedPlugins));
 
     const pluginVersion = process.env.CM_PLUGIN_VERSION || "v0.10.4";
     const displayPluginVersion = pluginVersion.slice(1);
