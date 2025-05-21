@@ -125,10 +125,11 @@ function parseHelmPluginList(output: string): Array<HelmPlugin> {
 
 class ChartMuseumPusher extends Pusher {
   async setup(opts?: SetupOpts): Promise<void> {
+    core.info("what is going on");
+
     let pluginListOutput = "";
 
     await cp.exec("helm", ["plugin", "list"], {
-      silent: true,
       listeners: {
         stdout: (data) => {
           pluginListOutput += data;
@@ -146,7 +147,7 @@ class ChartMuseumPusher extends Pusher {
     });
 
     if (alreadyInstalled) {
-      core.info(`helm cm-push plugin already installed`);
+      core.info("helm cm-push plugin already installed");
       return;
     }
 
