@@ -1,0 +1,12 @@
+apiVersion: v2
+name: valid-dependency
+description: |
+  A test Helm chart with a valid dependency.
+type: application
+version: v0.1.0
+appVersion: "1.16.0"
+dependencies:
+  - name: cert-manager
+    version: v1.16.0
+    repository: https://charts.jetstack.io
+    condition: cert-manager.enabled

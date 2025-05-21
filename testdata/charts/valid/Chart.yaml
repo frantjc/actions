@@ -1,0 +1,7 @@
+apiVersion: v2
+name: valid
+description: |
+  A test Helm chart with no dependencies.
+type: application
+version: v0.1.0
+appVersion: "1.16.0"

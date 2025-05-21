@@ -103,7 +103,7 @@ class ChartMuseumPusher extends Pusher {
       "plugin",
       "install",
       "https://github.com/chartmuseum/helm-push",
-      `--version=${process.env.CM_PLUGIN_VERSION || "v0.10.4"}`,
+      `--version=${process.env.CM_PLUGIN_VERSION ?? "v0.10.4"}`,
     ];
 
     if (opts?.debug) {
@@ -224,7 +224,7 @@ class ArtifactoryPusher extends Pusher {
     const chartBase = path.basename(opts.chartTgzPath);
 
     if (this.repository.protocol === "rt:") {
-      this.repository.protocol = `${process.env.RT_SCHEME || "https"}`;
+      this.repository.protocol = `${process.env.RT_SCHEME ?? "https"}`;
     }
 
     core.startGroup("builtin push");
@@ -284,7 +284,7 @@ async function run(): Promise<void> {
   try {
     let chartPath = core.getInput("chart-path", { required: true });
 
-    const workspace = process.env.GITHUB_WORKSPACE || process.cwd();
+    const workspace = process.env.GITHUB_WORKSPACE ?? process.cwd();
     if (!path.isAbsolute(chartPath) && workspace) {
       chartPath = path.join(workspace, chartPath);
     }
@@ -333,24 +333,23 @@ async function run(): Promise<void> {
 
     const dependencyUpdate = core.getBooleanInput("dependency-update");
     if (dependencyUpdate) {
-      const lenDeps = chartYAML.dependencies?.length || 0;
-
       let repoNames: string[] = [];
 
-      if (lenDeps > 0) {
-        for (let i = 0; i < lenDeps; i++) {
-          const depRepository = new URL(chartYAML.dependencies[i].repository);
+      for (const dependency of chartYAML.dependencies) {
+        if (dependency.repository) {
+          const dependencyRepository = new URL(dependency.repository);
 
-          if (!depRepository) {
-            throw new Error(`Chart.yaml dependency ${i} has no repository`);
-          }
+          const repoName = `${dependencyRepository.hostname}-${crypto.randomUUID().toString()}`;
 
-          const repoName = `${depRepository.hostname}-${crypto.randomUUID().toString()}`;
-
-          let repoAddArgs = ["repo", "add", repoName, depRepository.toString()];
+          let repoAddArgs = [
+            "repo",
+            "add",
+            repoName,
+            dependencyRepository.toString(),
+          ];
 
           if (
-            depRepository.origin === repository.origin &&
+            dependencyRepository.origin === repository.origin &&
             username &&
             password
           ) {
@@ -366,17 +365,17 @@ async function run(): Promise<void> {
             repoAddArgs = repoAddArgs.concat("--insecure-skip-tls-verify");
           }
 
-          core.startGroup(`helm repo add ${depRepository.toString()}`);
+          core.startGroup(`helm repo add ${dependencyRepository.toString()}`);
           await cp.exec("helm", repoAddArgs);
           core.endGroup();
 
           repoNames = repoNames.concat(repoName);
+
+          core.saveState("dependencyRepoNames", JSON.stringify(repoNames));
         }
-
-        core.saveState("dependencyRepoNames", JSON.stringify(repoNames));
-
-        packageArgs = packageArgs.concat("--dependency-update");
       }
+
+      packageArgs = packageArgs.concat("--dependency-update");
     }
 
     core.startGroup("helm package");

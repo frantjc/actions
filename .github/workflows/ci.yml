@@ -33,11 +33,10 @@ jobs:
       - uses: ./helm-package-push
         id: chart
         with:
-          chart-path: testdata/chart
+          chart-path: testdata/charts/valid
           repository: oci://ghcr.io/${{ github.repository }}
           username: ${{ github.actor }}
           password: ${{ secrets.GH_PAT }}
-          dependency-update: true
       - uses: ./ghcr-delete-images
         with:
           tags: |
@@ -45,8 +44,35 @@ jobs:
           token: ${{ secrets.GH_PAT }}
       - uses: ./helm-package-push
         with:
-          chart-path: testdata/chart
+          chart-path: testdata/chart/valid
           repository: cm://localhost:8080/
-          dependency-update: true
+        env:
+          HELM_REPO_USE_HTTP: "true"
+      - uses: ./helm-package-push
+        with:
+          chart-path: testdata/chart/valid
+          repository: cm://localhost:8080/
+          dependency-update: false
+        env:
+          HELM_REPO_USE_HTTP: "true"
+      - uses: ./helm-package-push
+        with:
+          chart-path: testdata/chart/valid-dependency
+          repository: cm://localhost:8080/
+        env:
+          HELM_REPO_USE_HTTP: "true"
+      - uses: ./helm-package-push
+        continue-on-error: true
+        with:
+          chart-path: testdata/chart/valid-dependency
+          repository: cm://localhost:8080/
+          dependency-update: false
+        env:
+          HELM_REPO_USE_HTTP: "true"
+      - uses: ./helm-package-push
+        continue-on-error: true
+        with:
+          chart-path: testdata/chart/invalid-dependency
+          repository: cm://localhost:8080/
         env:
           HELM_REPO_USE_HTTP: "true"
