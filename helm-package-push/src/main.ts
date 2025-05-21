@@ -44,7 +44,7 @@ abstract class Pusher {
   constructor(url: URL) {
     this.repository = url;
     this.repoName =
-      core.getState("repoName") ??
+      core.getState("repoName") ||
       `${this.repository.hostname}-${crypto.randomUUID().toString()}`;
   }
 
@@ -105,7 +105,7 @@ class ChartMuseumPusher extends Pusher {
       "plugin",
       "install",
       "https://github.com/chartmuseum/helm-push",
-      `--version=${process.env.CM_PLUGIN_VERSION ?? "v0.10.4"}`,
+      `--version=${process.env.CM_PLUGIN_VERSION || "v0.10.4"}`,
     ];
 
     if (opts?.debug) {
@@ -227,7 +227,7 @@ class ArtifactoryPusher extends Pusher {
     const chartBase = path.basename(opts.chartTgzPath);
 
     if (this.repository.protocol === "rt:") {
-      this.repository.protocol = `${process.env.RT_SCHEME ?? "https"}`;
+      this.repository.protocol = `${process.env.RT_SCHEME || "https"}`;
     }
 
     core.startGroup("builtin push");
@@ -287,7 +287,7 @@ async function run(): Promise<void> {
   try {
     let chartPath = core.getInput("chart-path", { required: true });
 
-    const workspace = process.env.GITHUB_WORKSPACE ?? process.cwd();
+    const workspace = process.env.GITHUB_WORKSPACE || process.cwd();
     if (!path.isAbsolute(chartPath) && workspace) {
       chartPath = path.join(workspace, chartPath);
     }
