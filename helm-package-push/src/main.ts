@@ -156,7 +156,7 @@ class ChartMuseumPusher extends Pusher {
     });
 
     if (alreadyInstalled) {
-      core.info("Helm cm-push plugin already installed");
+      core.debug("Helm cm-push plugin already installed");
       return;
     }
 
@@ -167,7 +167,7 @@ class ChartMuseumPusher extends Pusher {
     });
 
     if (wrongVersion) {
-      core.info(`Uninstalling incorrect version of helm cm-push plugin`);
+      core.debug(`Uninstalling incorrect version of helm cm-push plugin`);
 
       let pluginUninstallArgs = ["plugin", "uninstall", "cm-push"];
 
@@ -480,9 +480,9 @@ async function run(): Promise<void> {
         }
 
         packageArgs = packageArgs.concat("--dependency-update");
+      } else if (chartYAML.dependencies) {
+        throw new Error(`${chartYAMLPath} dependencies are invalid`);
       }
-    } else if (chartYAML.dependencies) {
-      throw new Error(`${chartYAMLPath} dependencies are invalid`);
     }
 
     core.debug("Packaging chart");
