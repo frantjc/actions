@@ -87,15 +87,7 @@ abstract class Pusher {
     const repoName = core.getState("repoName");
 
     if (repoName !== "") {
-      let repoRemoveArgs = ["repo", "remove", this.repoName];
-
-      if (opts?.debug) {
-        repoRemoveArgs = repoRemoveArgs.concat("--debug");
-      }
-
-      core.startGroup(`Helm repo remove ${this.repoName}`);
-      await cp.exec("helm", repoRemoveArgs);
-      core.endGroup();
+      helmRepoRemove(repoName, opts?.debug);
     }
   }
 
@@ -537,6 +529,35 @@ async function run(): Promise<void> {
   }
 }
 
+async function helmRepoRemove(
+  repoName: string,
+  debug?: boolean,
+): Promise<void> {
+  let repoRemoveArgs = ["repo", "remove", repoName];
+
+  if (debug) {
+    repoRemoveArgs = repoRemoveArgs.concat("--debug");
+  }
+
+  let repoRemoveOutput = "";
+
+  core.startGroup(`Exec helm repo remove ${repoName}`);
+  try {
+    await cp.exec("helm", repoRemoveArgs, {
+      listeners: {
+        stdout: (data) => {
+          repoRemoveOutput += data;
+        },
+      },
+    });
+  } catch (err) {
+    if (!repoRemoveOutput.includes(`no repo named "${repoName}" found`)) {
+      throw err;
+    }
+  }
+  core.endGroup();
+}
+
 async function cleanup(): Promise<void> {
   try {
     const debug = core.isDebug();
@@ -550,15 +571,7 @@ async function cleanup(): Promise<void> {
       ) as Array<string>;
 
       for (const repoName of repoNames) {
-        let repoRemoveArgs = ["repo", "remove", repoName];
-
-        if (debug) {
-          repoRemoveArgs = repoRemoveArgs.concat("--debug");
-        }
-
-        core.startGroup(`Exec helm repo remove ${repoName}`);
-        await cp.exec("helm", repoRemoveArgs);
-        core.endGroup();
+        helmRepoRemove(repoName, debug);
       }
     }
 
