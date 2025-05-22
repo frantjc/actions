@@ -41,6 +41,14 @@ jobs:
             ghcr.io/${{ github.repository }}/${{ steps.ghcr.outputs.name }}:${{ steps.ghcr.outputs.version }}
           token: ${{ secrets.GH_PAT }}
       - uses: ./helm-package-push
+        continue-on-error: true
+        with:
+          chart-path: testdata/charts/valid
+          repository: cm://localhost:8080/
+          dependency-update: false
+        env:
+          HELM_REPO_USE_HTTP: "true"
+      - uses: ./helm-package-push
         with:
           chart-path: testdata/charts/valid
           repository: cm://localhost:8080/
