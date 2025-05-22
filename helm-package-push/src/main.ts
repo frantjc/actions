@@ -74,7 +74,7 @@ abstract class Pusher {
       repoAddArgs = repoAddArgs.concat("--insecure-skip-tls-verify");
     }
 
-    core.startGroup("helm repo add");
+    core.startGroup("Exec helm repo add");
     await cp.exec("helm", repoAddArgs);
     core.endGroup();
 
@@ -93,7 +93,7 @@ abstract class Pusher {
         repoRemoveArgs = repoRemoveArgs.concat("--debug");
       }
 
-      core.startGroup(`helm repo remove ${this.repoName}`);
+      core.startGroup(`Helm repo remove ${this.repoName}`);
       await cp.exec("helm", repoRemoveArgs);
       core.endGroup();
     }
@@ -134,7 +134,7 @@ class ChartMuseumPusher extends Pusher {
   async setup(opts?: SetupOpts): Promise<void> {
     let pluginListOutput = "";
 
-    core.startGroup("helm plugin list");
+    core.startGroup("Exec helm plugin list");
     await cp.exec("helm", ["plugin", "list"], {
       listeners: {
         stdout: (data) => {
@@ -156,7 +156,7 @@ class ChartMuseumPusher extends Pusher {
     });
 
     if (alreadyInstalled) {
-      core.info("helm cm-push plugin already installed");
+      core.info("Helm cm-push plugin already installed");
       return;
     }
 
@@ -167,7 +167,7 @@ class ChartMuseumPusher extends Pusher {
     });
 
     if (wrongVersion) {
-      core.info(`uninstalling incorrect version of helm cm-push plugin`);
+      core.info(`Uninstalling incorrect version of helm cm-push plugin`);
 
       let pluginUninstallArgs = ["plugin", "uninstall", "cm-push"];
 
@@ -175,7 +175,7 @@ class ChartMuseumPusher extends Pusher {
         pluginUninstallArgs = pluginUninstallArgs.concat("--debug");
       }
 
-      core.startGroup("helm plugin uninstall");
+      core.startGroup("Exec helm plugin uninstall");
       await cp.exec("helm", pluginUninstallArgs);
       core.endGroup();
     }
@@ -191,7 +191,7 @@ class ChartMuseumPusher extends Pusher {
       pluginInstallArgs = pluginInstallArgs.concat("--debug");
     }
 
-    core.startGroup("helm plugin install");
+    core.startGroup("Exec helm plugin install");
     await cp.exec("helm", pluginInstallArgs);
     core.endGroup();
   }
@@ -210,7 +210,7 @@ class ChartMuseumPusher extends Pusher {
 
     cmPushArgs = cmPushArgs.concat(this.repoName);
 
-    core.startGroup("helm cm-push");
+    core.startGroup("Exec helm cm-push");
     await cp.exec("helm", cmPushArgs);
     core.endGroup();
 
@@ -226,7 +226,7 @@ class ChartMuseumPusher extends Pusher {
       pluginUninstallArgs = pluginUninstallArgs.concat("--debug");
     }
 
-    core.startGroup("helm plugin uninstall");
+    core.startGroup("Exec helm plugin uninstall");
     await cp.exec("helm", pluginUninstallArgs);
     core.endGroup();
   }
@@ -253,7 +253,7 @@ class OCIPusher extends Pusher {
       registryLoginArgs = registryLoginArgs.concat("--insecure");
     }
 
-    core.startGroup("helm registry login");
+    core.startGroup("Exec helm registry login");
     await cp.exec("helm", registryLoginArgs);
     core.endGroup();
   }
@@ -269,7 +269,7 @@ class OCIPusher extends Pusher {
       pushArgs = pushArgs.concat("--insecure-skip-tls-verify");
     }
 
-    core.startGroup("helm push");
+    core.startGroup("Exec helm push");
     await cp.exec("helm", pushArgs);
     core.endGroup();
 
@@ -283,7 +283,7 @@ class OCIPusher extends Pusher {
       registryLogoutArgs = registryLogoutArgs.concat("--debug");
     }
 
-    core.startGroup("helm registry logout");
+    core.startGroup("Exec helm registry logout");
     await cp.exec("helm", registryLogoutArgs);
     core.endGroup();
   }
@@ -337,7 +337,11 @@ class URLOpener<T> {
 class URLMux<T> {
   private handlers = new Map<string, URLOpener<T>>();
 
-  register(opener: URLOpener<T>, scheme: string, ...schemes: string[]): void {
+  register(
+    opener: URLOpener<T>,
+    scheme: string,
+    ...schemes: Array<string>
+  ): void {
     for (const s of schemes.concat(scheme)) {
       this.handlers.set(s, opener);
     }
@@ -414,9 +418,9 @@ async function run(): Promise<void> {
 
     const dependencyUpdate = core.getBooleanInput("dependency-update");
     if (dependencyUpdate) {
-      core.info("Setting up dependencies");
+      core.debug("Setting up dependencies");
 
-      let repoNames: string[] = [];
+      let repoNames: Array<string> = [];
 
       if (Array.isArray(chartYAML.dependencies)) {
         for (const dependency of chartYAML.dependencies) {
@@ -481,9 +485,9 @@ async function run(): Promise<void> {
       throw new Error(`${chartYAMLPath} dependencies are invalid`);
     }
 
-    core.info("Packaging chart");
+    core.debug("Packaging chart");
 
-    core.startGroup("helm package");
+    core.startGroup("Exec helm package");
     await cp.exec("helm", packageArgs);
     core.endGroup();
 
@@ -497,11 +501,11 @@ async function run(): Promise<void> {
     if (push) {
       const pusher = urlMux.open(repository.toString());
 
-      core.info("Setting up");
+      core.debug("Setting up");
 
       await pusher.setup({ debug });
 
-      core.info("Logging in");
+      core.debug("Logging in");
 
       await pusher.login({
         username,
@@ -510,7 +514,7 @@ async function run(): Promise<void> {
         insecure,
       });
 
-      core.info("Pushing chart");
+      core.debug("Pushing chart");
 
       const chart = await pusher.push({
         chartTgzPath,
@@ -539,20 +543,20 @@ async function cleanup(): Promise<void> {
 
     const dependencyUpdate = core.getBooleanInput("dependency-update");
     if (dependencyUpdate) {
-      core.info("Tearing down dependencies");
+      core.debug("Tearing down dependencies");
 
       const repoNames = JSON.parse(
         core.getState("dependencyRepoNames") || "[]",
-      );
+      ) as Array<string>;
 
-      for (const repoName in repoNames) {
+      for (const repoName of repoNames) {
         let repoRemoveArgs = ["repo", "remove", repoName];
 
         if (debug) {
           repoRemoveArgs = repoRemoveArgs.concat("--debug");
         }
 
-        core.startGroup(`helm repo remove ${repoName}`);
+        core.startGroup(`Exec helm repo remove ${repoName}`);
         await cp.exec("helm", repoRemoveArgs);
         core.endGroup();
       }
@@ -567,13 +571,13 @@ async function cleanup(): Promise<void> {
 
       const pusher = urlMux.open(repository.toString());
 
-      core.info("Logging out");
+      core.debug("Logging out");
 
       await pusher.logout({
         debug,
       });
 
-      core.info("Cleaning up");
+      core.debug("Cleaning up");
 
       await pusher.cleanup({
         debug,
