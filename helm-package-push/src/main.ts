@@ -138,7 +138,7 @@ async function helmPluginUninstall(
   try {
     await cp.exec("helm", pluginUninstallArgs, {
       listeners: {
-        stdout: (data) => {
+        stderr: (data) => {
           pluginUninstallOutput += data;
         },
       },
