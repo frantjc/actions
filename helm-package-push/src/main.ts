@@ -234,15 +234,7 @@ class ChartMuseumPusher extends Pusher {
   }
 
   async cleanup(opts?: CleanupOpts): Promise<void> {
-    let pluginUninstallArgs = ["plugin", "uninstall", "cm-push"];
-
-    if (opts?.debug) {
-      pluginUninstallArgs = pluginUninstallArgs.concat("--debug");
-    }
-
-    core.startGroup("Exec helm plugin uninstall");
-    await cp.exec("helm", pluginUninstallArgs);
-    core.endGroup();
+    helmPluginUninstall("cm-push", opts?.debug);
   }
 }
 
