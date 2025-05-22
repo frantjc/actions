@@ -122,6 +122,37 @@ function parseHelmPluginList(output: string): Array<HelmPlugin> {
   return [];
 }
 
+async function helmPluginUninstall(
+  pluginName: string,
+  debug?: boolean,
+): Promise<void> {
+  let pluginUninstallArgs = ["plugin", "uninstall", pluginName];
+
+  if (debug) {
+    pluginUninstallArgs = pluginUninstallArgs.concat("--debug");
+  }
+
+  let pluginUninstallOutput = "";
+
+  core.startGroup(`Exec helm plugin uninstall ${pluginName}`);
+  try {
+    await cp.exec("helm", pluginUninstallArgs, {
+      listeners: {
+        stdout: (data) => {
+          pluginUninstallOutput += data;
+        },
+      },
+    });
+  } catch (err) {
+    if (!pluginUninstallOutput.includes(`Plugin: ${pluginName} not found`)) {
+      throw err;
+    }
+  }
+  core.endGroup();
+}
+
+// Plugin: cm-push not found
+
 class ChartMuseumPusher extends Pusher {
   async setup(opts?: SetupOpts): Promise<void> {
     let pluginListOutput = "";
@@ -160,16 +191,7 @@ class ChartMuseumPusher extends Pusher {
 
     if (wrongVersion) {
       core.debug(`Uninstalling incorrect version of helm cm-push plugin`);
-
-      let pluginUninstallArgs = ["plugin", "uninstall", "cm-push"];
-
-      if (opts?.debug) {
-        pluginUninstallArgs = pluginUninstallArgs.concat("--debug");
-      }
-
-      core.startGroup("Exec helm plugin uninstall");
-      await cp.exec("helm", pluginUninstallArgs);
-      core.endGroup();
+      helmPluginUninstall("cm-push", opts?.debug);
     }
 
     let pluginInstallArgs = [
