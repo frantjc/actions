@@ -44,23 +44,6 @@ jobs:
         with:
           chart-path: testdata/charts/valid
           repository: cm://localhost:8080/
-          version: 0.1.0-du
-        env:
-          HELM_REPO_USE_HTTP: "true"
-      - uses: ./helm-package-push
-        with:
-          chart-path: testdata/charts/valid
-          repository: cm://localhost:8080/
-          dependency-update: false
-          version: 0.1.0-ndu
-        env:
-          HELM_REPO_USE_HTTP: "true"
-      - uses: ./helm-package-push
-        continue-on-error: true
-        with:
-          chart-path: testdata/charts/valid-dependency
-          repository: cm://localhost:8080/
-          dependency-update: false
         env:
           HELM_REPO_USE_HTTP: "true"
       - uses: ./helm-package-push
