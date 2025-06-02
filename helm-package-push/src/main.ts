@@ -100,26 +100,35 @@ type HelmPlugin = {
   description: string;
 };
 
-function parseHelmPluginList(output: string): Array<HelmPlugin> {
-  const lines = output.trim().split("\n");
+async function helmPluginList(): Promise<Array<HelmPlugin>> {
+  let plugins: HelmPlugin[] = [],
+    passedHeader = false;
 
-  if (lines.length > 1) {
-    return lines.slice(1).map((line) => {
-      const cols = line.split(/\t/).map((c) => c.trim());
+  core.startGroup("Exec helm plugin list");
+  await cp.exec("helm", ["plugin", "list"], {
+    listeners: {
+      stdline: (line) => {
+        if (passedHeader) {
+          const cols = line.split(/\t/).map((c) => c.trim());
 
-      if (cols.length < 3) {
-        throw new Error(`invalid helm plugin list output: ${line}`);
-      }
+          if (cols.length < 3) {
+            throw new Error(`invalid helm repo list output: ${line}`);
+          }
 
-      return {
-        name: cols[0],
-        version: cols[1],
-        description: cols[2],
-      };
-    });
-  }
+          plugins.push({
+            name: cols[0],
+            version: cols[1],
+            description: cols[2],
+          });
+        } else {
+          passedHeader = true;
+        }
+      },
+    },
+  });
+  core.endGroup();
 
-  return [];
+  return plugins;
 }
 
 async function helmPluginUninstall(
@@ -151,23 +160,9 @@ async function helmPluginUninstall(
   core.endGroup();
 }
 
-// Plugin: cm-push not found
-
 class ChartMuseumPusher extends Pusher {
   async setup(opts?: SetupOpts): Promise<void> {
-    let pluginListOutput = "";
-
-    core.startGroup("Exec helm plugin list");
-    await cp.exec("helm", ["plugin", "list"], {
-      listeners: {
-        stdout: (data) => {
-          pluginListOutput += data;
-        },
-      },
-    });
-    core.endGroup();
-
-    const installedPlugins = parseHelmPluginList(pluginListOutput);
+    const installedPlugins = await helmPluginList();
 
     const pluginVersion = process.env.CM_PLUGIN_VERSION || "v0.10.4";
     const displayPluginVersion = pluginVersion.slice(1);
@@ -371,6 +366,41 @@ urlMux.register(new URLOpener(ChartMuseumPusher), "cm");
 urlMux.register(new URLOpener(OCIPusher), "oci");
 urlMux.register(new URLOpener(ArtifactoryPusher), "rt", "https", "http");
 
+type HelmRepo = {
+  name: string;
+  url: string;
+};
+
+async function helmRepoList(): Promise<Array<HelmRepo>> {
+  let repos: HelmRepo[] = [],
+    passedHeader = false;
+
+  core.startGroup("Exec helm repo list");
+  await cp.exec("helm", ["repo", "list"], {
+    listeners: {
+      stdline: (line) => {
+        if (passedHeader) {
+          const cols = line.split(/\t/).map((c) => c.trim());
+
+          if (cols.length < 2) {
+            throw new Error(`invalid helm repo list output: ${line}`);
+          }
+
+          repos.push({
+            name: cols[0],
+            url: cols[1],
+          });
+        } else {
+          passedHeader = true;
+        }
+      },
+    },
+  });
+  core.endGroup();
+
+  return repos;
+}
+
 async function run(): Promise<void> {
   try {
     let chartPath = core.getInput("chart-path", { required: true });
@@ -429,6 +459,8 @@ async function run(): Promise<void> {
       let repoNames: Array<string> = [];
 
       if (Array.isArray(chartYAML.dependencies)) {
+        const addedRepos = await helmRepoList();
+
         for (const dependency of chartYAML.dependencies) {
           const dependencyRepository = new URL(dependency.repository);
 
@@ -441,6 +473,18 @@ async function run(): Promise<void> {
               break;
             case "http":
             case "https":
+              if (
+                addedRepos.some(
+                  (repo) => repo.url === dependencyRepository.toString(),
+                )
+              ) {
+                core.info(
+                  `Skipping helm repo add for existing repo ${dependencyRepository.toString()}`,
+                );
+
+                break;
+              }
+
               const repoName = `${dependencyRepository.hostname}-${crypto.randomUUID().toString()}`;
 
               let repoAddArgs = [
@@ -556,20 +600,21 @@ async function helmRepoRemove(
   let repoRemoveOutput = "";
 
   core.startGroup(`Exec helm repo remove ${repoName}`);
-  try {
-    await cp.exec("helm", repoRemoveArgs, {
-      listeners: {
-        stdout: (data) => {
-          repoRemoveOutput += data;
-        },
+  const exitCode = await cp.exec("helm", repoRemoveArgs, {
+    listeners: {
+      stdout: (data) => {
+        repoRemoveOutput += data;
       },
-    });
-  } catch (err) {
-    if (!repoRemoveOutput.includes(`no repo named "${repoName}" found`)) {
-      throw err;
-    }
-  }
+    },
+  });
   core.endGroup();
+
+  if (
+    exitCode !== 0 &&
+    !repoRemoveOutput.includes(`no repo named "${repoName}" found`)
+  ) {
+    throw new Error(repoRemoveOutput);
+  }
 }
 
 async function cleanup(): Promise<void> {
