@@ -1,10 +1,10 @@
 # actions [![CI](https://github.com/frantjc/actions/actions/workflows/ci.yml/badge.svg?branch=main&event=push)](https://github.com/frantjc/actions/actions)
 
-A collection of GitHub Actions amassed over the years which aren't big enough to merit their own repository but aren't small enough to rewrite for each project that needs it.
+A collection of GitHub Actions that I often have need for.
 
-# use
+## use
 
-## ghcr-delete-images
+### ghcr-delete-images
 
 Delete container images from the ghcr.io registry using GitHub's API. If this is the last version of this package, deletes the package.
 
@@ -21,31 +21,35 @@ Delete container images from the ghcr.io registry using GitHub's API. If this is
       ghcr.io/frantjc/actions@sha256:4594271250150c1a322ed749abfd218e1a8c6eb1ade90872e325a664412e2037
 ```
 
-## helm-package-push
+### helm-package-push
 
 Package and push a Helm Chart to an OCI, ChartMuseum or JFrog-Artifactory-compatible http(s) repository.
 
 ```yml
 # This action relies on `helm` being installed to work.
 # The simplest way to do this is via https://github.com/azure/setup-helm.
-#   - uses: azure/setup-helm@v4
+#  - uses: azure/setup-helm@v4
 - uses: frantjc/actions/helm-package-push@v1
   with:
-    # Path to chart to package and push. Required.
+    # Path to chart to package and push.
+    # Required.
     chart-path: .
-    # Whether or not to push the packaged chart. Default true.
+    # Whether or not to push the packaged chart.
+    # Defaults to true.
     push: true
     # Repository to authenticate and push the chart to.
     # http(s) repositories receive an HTTP PUT with
     # the Helm Chart .tgz  as the body to the path
     # /$CHART_NAME-$CHART_VERSION.tgz
     # with Basic Authentication if username and password are
-    # specified. Required if push is true.
-    # More examples:
+    # specified.
+    # Required if push is true.
+    # Examples:
     #  - cm://chartmuseum.mycorp.net/
     #  - oci://ghcr.io/frantjc/actions
     repository: https://jfrog.mycorp.net/artifactory/helm-local
-    # Whether or not to update dependencies when packaging. Default true.
+    # Whether or not to update dependencies when packaging.
+    # Defaults to true.
     dependency-update: true
     # Set the appVersion on the chart to this version.
     app-version: 1.0.0
@@ -55,6 +59,35 @@ Package and push a Helm Chart to an OCI, ChartMuseum or JFrog-Artifactory-compat
     username: ${{ secrets.HELM_REPO_USERNAME }}
     # Repository password or identity token.
     password: ${{ secrets.HELM_REPO_PASSWORD }}
-    # Allow connections to TLS repositories without certificate validation. Default false.
+    # Allow connections to TLS repositories without certificate validation.
+    # Defaults to false.
     insecure: false
+```
+
+### setup-tool
+
+Setup and cache a tool from a GitHub release.
+
+```yml
+- uses: frantjc/actions/setup-tool@v1
+  with:
+    # GitHub token to authenticate with.
+    # Defaults to ${{ github.token }}.
+    token: ${{ secrets.GH_PAT }}
+    # Path to chart to package and push.
+    # Defaults to the current repository.
+    repository: mikefarah/yq
+    # The version of the tool to setup.
+    # Must be one of:
+    #  - Omitted (defaults to the latest release).
+    #  - An exact tag.
+    #  - Coercible into a semver.
+    # Examples:
+    #  - v1.2.3
+    #  - v2.1
+    #  - v3
+    version: v4
+    # The name of the tool to setup.
+    # Defaults to the repository name.
+    tool: yq
 ```

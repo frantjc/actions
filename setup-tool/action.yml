@@ -1,0 +1,24 @@
+name: Setup tools
+description: |
+  Setup tools from a GitHub release.
+author: frantjc
+inputs:
+  token:
+    description: |
+      GitHub token to authenticate with.
+    default: ${{ github.token }}
+  repository:
+    description: |
+      GitHub repository of the release.
+    default: ${{ github.repository }}
+  version:
+    description: |
+      Tag of the GitHub release. Defaults to the latest semver-tagged release.
+    required: false
+  tool:
+    description: |
+      Name of the tool to install. Defaults to the repo name.
+    required: true
+runs:
+  using: node24
+  main: ./dist/index.js

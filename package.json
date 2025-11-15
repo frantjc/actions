@@ -11,7 +11,8 @@
     "build:tsc": "tsc",
     "build:ncc": "npm-run-all build:ncc:*",
     "build:ncc:helm-package-push": "ncc build ./lib/helm-package-push/src/main.js --source-map --license licenses.txt --minify --out helm-package-push/dist",
-    "build:ncc:ghcr-delete-images": "ncc build ./lib/ghcr-delete-images/src/main.js --source-map --license licenses.txt --minify --out ghcr-delete-images/dist"
+    "build:ncc:ghcr-delete-images": "ncc build ./lib/ghcr-delete-images/src/main.js --source-map --license licenses.txt --minify --out ghcr-delete-images/dist",
+    "build:ncc:setup-tool": "ncc build ./lib/setup-tool/src/main.js --source-map --license licenses.txt --minify --out setup-tool/dist"
   },
   "repository": {
     "type": "git",
@@ -21,6 +22,7 @@
   "dependencies": {
     "@actions/core": "^1.10.1",
     "@actions/exec": "^1.1.1",
+    "@actions/tool-cache": "^2.0.2",
     "octokit": "^3.1.2",
     "yaml": "^2.5.1"
   },
