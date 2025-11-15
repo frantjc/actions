@@ -26,7 +26,7 @@ jobs:
       - uses: ./setup-tool
         with:
           repository: fluxcd/flux2
-          tag: v2.7.3
+          version: v2.7.3
           tool: flux
       - uses: ./setup-tool
         with:
@@ -37,11 +37,11 @@ jobs:
       - uses: ./setup-tool
         with:
           repository: mikefarah/yq
-          tag: v4.48.1
+          version: v4.48.1
       - uses: ./setup-tool
         with:
           repository: mikefarah/yq
-          tag: v4
+          version: v4
   helm-package-push-and-ghcr-delete-images:
     services:
       cm:
