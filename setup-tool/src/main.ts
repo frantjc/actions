@@ -93,7 +93,7 @@ async function run(): Promise<void> {
           });
           const release = releaseRes.data;
           release_id = release.id;
-          tagName = release.tag_name;
+          tagName = semver.coerce(release.tag_name)?.toString() || release.tag_name;
         } catch (err) {
           core.warning(`get release for tag ${tag}: ${err}`);
           for (; i === tags.length - 1; page++) {
@@ -211,7 +211,7 @@ async function run(): Promise<void> {
     }
 
     core.addPath(toolPath);
-    core.info(`setup ${tool} ${tagName}`);
+    core.info(`setup ${tool} ${tagName || version}`);
   } catch (err) {
     if (typeof err === "string" || err instanceof Error) {
       core.setFailed(err);
