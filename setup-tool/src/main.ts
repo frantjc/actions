@@ -82,7 +82,7 @@ async function run(): Promise<void> {
     let toolPath = tc.find(tool, version, runnerArch);
     if (!toolPath) {
       let tags = [version];
-      let page = 0;
+      let page = 1;
       for (let i = 0; !release_id && i < tags.length; i++) {
         const tag = tags[i];
         core.debug(`checking for release matching tag ${tag}`);
@@ -129,15 +129,14 @@ async function run(): Promise<void> {
       }
       core.info(`found matching tag with release ID ${release_id}`);
 
-      let releaseAssets: RestEndpointMethodTypes["repos"]["listReleaseAssets"]["response"]["data"] = []
-      for (page = 0; !releaseAssets.length; page++) {
-        const releaseAssetsRes = await octokit.rest.repos.listReleaseAssets({
-          owner,
-          repo,
-          release_id,
-        });
-        releaseAssets = releaseAssetsRes.data;
-      }
+      const releaseAssetsRes = await octokit.rest.repos.listReleaseAssets({
+        owner,
+        repo,
+        release_id,
+        // FIXME(frantjc): Paginate instead of relying on there being <100 release assets.
+        per_page: 100,
+      });
+      const releaseAssets = releaseAssetsRes.data;
 
       const toolReleaseAsset = releaseAssets.find((ra) => {
         const name = ra.name.toLowerCase();
