@@ -27,17 +27,13 @@ const runnerOs = (function () {
   }
 })();
 
+const runnerOsToolExtension = runnerOs === "windows" ? ".exe" : "";
+
 // FIXME(frantjc): path.extname("foo.tar.gz") === ".gz", so we use ".gz" everywhere.
 // This doesn't break anything, but looks a bit gross.
 const extractExtensions = [".tgz", ".gz", ".zip"];
 
-const toolExtensions = (function () {
-  if (runnerOs === "windows") {
-    return extractExtensions.concat(".exe");
-  }
-
-  return extractExtensions.concat("");
-})();
+const toolExtensions = extractExtensions.concat(runnerOsToolExtension);
 
 const tmp = process.env.RUNNER_TEMP || os.tmpdir();
 
@@ -83,7 +79,6 @@ async function run(): Promise<void> {
 
     const tool = core.getInput("tool") || repo;
     let toolPath = tc.find(tool, version, runnerArch);
-
     if (!toolPath) {
       let tags = [version];
       let page = 0;
@@ -203,16 +198,20 @@ async function run(): Promise<void> {
               `unhandled asset extension that needs extracted ${ext}`,
             );
         }
-        cachePath = path.join(extractDest, tool);
+        cachePath = path.join(extractDest, `${tool}${runnerOsToolExtension}`);
       }
 
       if (!tagName) {
         tagName = semver.coerce(version)?.toString() || "";
       }
       toolPath = await tc.cacheFile(cachePath, tool, tool, tagName, runnerArch);
+      core.info(`cached ${tool} ${tagName}`);
+    } else {
+      core.info(`found ${tool} ${version} in cache`);
     }
 
     core.addPath(toolPath);
+    core.info(`setup ${tool} ${tagName}`);
   } catch (err) {
     if (typeof err === "string" || err instanceof Error) {
       core.setFailed(err);
