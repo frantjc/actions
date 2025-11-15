@@ -37,7 +37,7 @@ jobs:
       - uses: ./setup-tool
         with:
           repository: mikefarah/yq
-          version: v4.48.1
+          version: v4.48.2
       - uses: ./setup-tool
         with:
           repository: mikefarah/yq

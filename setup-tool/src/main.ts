@@ -1,5 +1,6 @@
 import * as core from "@actions/core";
 import * as tc from "@actions/tool-cache";
+import { RestEndpointMethodTypes } from "@octokit/plugin-rest-endpoint-methods/dist-types/generated/parameters-and-response-types";
 import { Octokit } from "octokit";
 import os from "os";
 import path from "path";
@@ -93,7 +94,10 @@ async function run(): Promise<void> {
           });
           const release = releaseRes.data;
           release_id = release.id;
-          tagName = semver.coerce(release.tag_name)?.toString() || release.tag_name;
+          tagName = release.tag_name;
+          if (!tagName.startsWith("v")) {
+            tagName = `v${tagName}`;
+          }
         } catch (err) {
           core.warning(`get release for tag ${tag}: ${err}`);
           for (; i === tags.length - 1; page++) {
@@ -125,12 +129,15 @@ async function run(): Promise<void> {
       }
       core.info(`found matching tag with release ID ${release_id}`);
 
-      const releaseAssetsRes = await octokit.rest.repos.listReleaseAssets({
-        owner,
-        repo,
-        release_id,
-      });
-      const releaseAssets = releaseAssetsRes.data;
+      let releaseAssets: RestEndpointMethodTypes["repos"]["listReleaseAssets"]["response"]["data"] = []
+      for (page = 0; !releaseAssets.length; page++) {
+        const releaseAssetsRes = await octokit.rest.repos.listReleaseAssets({
+          owner,
+          repo,
+          release_id,
+        });
+        releaseAssets = releaseAssetsRes.data;
+      }
 
       const toolReleaseAsset = releaseAssets.find((ra) => {
         const name = ra.name.toLowerCase();
