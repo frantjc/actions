@@ -312,8 +312,8 @@ class ArtifactoryPusher extends Pusher {
         method: "PUT",
         headers,
         body,
-      }
-    )
+      },
+    );
     core.endGroup();
 
     return path.join(this.repository.toString(), chartBase);

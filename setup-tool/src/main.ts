@@ -168,7 +168,9 @@ async function run(): Promise<void> {
           `no release assets matching ${runnerOs}/${runnerArch} were found`,
         );
       }
-      core.info(`found release asset ${toolReleaseAsset.name} matching ${runnerOs}/${runnerArch}`);
+      core.info(
+        `found release asset ${toolReleaseAsset.name} matching ${runnerOs}/${runnerArch}`,
+      );
 
       const downloadDest = path.join(tmp, toolReleaseAsset.name);
       const downloadPath = await tc.downloadTool(
