@@ -4,10 +4,7 @@ import * as cp from "@actions/exec";
 import fs from "fs";
 import path from "path";
 import yaml from "yaml";
-import undici from "undici";
-import http from "http";
 import crypto from "crypto";
-import { Writable } from "stream";
 
 type SetupOpts = {
   debug?: boolean;
@@ -292,10 +289,9 @@ class OCIPusher extends Pusher {
 
 class ArtifactoryPusher extends Pusher {
   async push(opts: PushOpts): Promise<string> {
-    const { size } = fs.statSync(opts.chartTgzPath);
-    const body = fs.createReadStream(opts.chartTgzPath);
-    let headers: http.IncomingHttpHeaders = {
-      "Content-Length": size.toString(),
+    const body = await fs.openAsBlob(opts.chartTgzPath);
+    let headers: Record<string, string> = {
+      "Content-Length": body.size.toString(),
     };
 
     if (opts?.username && opts?.password) {
@@ -310,17 +306,14 @@ class ArtifactoryPusher extends Pusher {
     }
 
     core.startGroup("builtin push");
-    await new undici.Client(this.repository.origin, {
-      connect: {
-        rejectUnauthorized: !opts?.insecure,
-        requestCert: !opts?.insecure,
-      },
-    }).request({
-      method: "PUT",
-      path: path.join(this.repository.pathname, chartBase),
-      headers,
-      body,
-    });
+    await fetch(
+      new URL(path.join(this.repository.pathname, chartBase), this.repository),
+      {
+        method: "PUT",
+        headers,
+        body,
+      }
+    )
     core.endGroup();
 
     return path.join(this.repository.toString(), chartBase);
