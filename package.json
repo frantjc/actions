@@ -1,6 +1,6 @@
 {
   "name": "actions",
-  "version": "1.0.2",
+  "version": "1.1.0",
   "private": true,
   "scripts": {
     "all": "npm-run-all fmt build",
