@@ -132,7 +132,9 @@ async function run(): Promise<void> {
       if (!release_id) {
         throw new Error(`no release found with a tag matching ${version}`);
       }
-      core.info(`found release ${release_id} on tag ${tagName} matching version ${version} in ${repository}`);
+      core.info(
+        `found release ${release_id} on tag ${tagName} matching version ${version} in ${repository}`,
+      );
 
       const releaseAssetsRes = await octokit.rest.repos.listReleaseAssets({
         owner,
