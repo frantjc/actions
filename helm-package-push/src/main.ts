@@ -1,6 +1,5 @@
 import * as core from "@actions/core";
 import * as cp from "@actions/exec";
-
 import fs from "fs";
 import path from "path";
 import yaml from "yaml";
@@ -355,7 +354,7 @@ class URLMux<T> {
 }
 
 const urlMux = new URLMux<Pusher>();
-urlMux.register(new URLOpener(ChartMuseumPusher), "cm");
+urlMux.register(new URLOpener(ChartMuseumPusher), "cm", "chartmuseum");
 urlMux.register(new URLOpener(OCIPusher), "oci");
 urlMux.register(new URLOpener(ArtifactoryPusher), "rt", "https", "http");
 

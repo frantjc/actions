@@ -28,12 +28,14 @@ jobs:
           repository: fluxcd/flux2
           version: v2.7.3
           tool: flux
+      - run: flux --version
       - uses: ./setup-tool
         with:
           repository: dagger/dagger
       - uses: ./setup-tool
         with:
           repository: dagger/dagger
+      - run: dagger version
       - uses: ./setup-tool
         with:
           repository: mikefarah/yq
@@ -42,6 +44,12 @@ jobs:
         with:
           repository: mikefarah/yq
           version: v4
+      - run: yq --version
+      - uses: ./setup-tool
+        with:
+          repository: go-task/task
+          version: v3
+      - run: task --version
   helm-package-push-and-ghcr-delete-images:
     services:
       cm:

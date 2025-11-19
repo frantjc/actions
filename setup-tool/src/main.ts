@@ -1,6 +1,5 @@
 import * as core from "@actions/core";
 import * as tc from "@actions/tool-cache";
-import { RestEndpointMethodTypes } from "@octokit/plugin-rest-endpoint-methods/dist-types/generated/parameters-and-response-types";
 import { Octokit } from "octokit";
 import os from "os";
 import path from "path";
@@ -30,13 +29,16 @@ const runnerOs = (function () {
 
 const runnerOsToolExtension = runnerOs === "windows" ? ".exe" : "";
 
-// FIXME(frantjc): path.extname("foo.tar.gz") === ".gz", so we use ".gz" everywhere.
-// This doesn't break anything, but looks a bit gross.
+// FIXME(frantjc): path.extname("foo.tar.gz") === ".gz", so we use .gz everywhere.
+// This doesn't seem to break anything, but it feels a bit gross.
 const extractExtensions = [".tgz", ".gz", ".zip"];
 
 const toolExtensions = extractExtensions.concat(runnerOsToolExtension);
 
 const tmp = process.env.RUNNER_TEMP || os.tmpdir();
+
+// FIXME(frantjc): Paginate instead of relying on there being <=100 items.
+const per_page = 100;
 
 async function run(): Promise<void> {
   try {
@@ -48,11 +50,11 @@ async function run(): Promise<void> {
     const [owner, repo] = repository.split("/", 2);
     let version = core.getInput("version");
     let release_id = 0;
-    let tagName = "";
     if (!version) {
       const releasesRes = await octokit.rest.repos.listReleases({
         owner,
         repo,
+        per_page,
       });
       const releases = releasesRes.data;
       const release = releases.reduce((acc, cur) => {
@@ -74,9 +76,13 @@ async function run(): Promise<void> {
 
         return acc;
       });
+      if (!release) {
+        throw new Error(`no releases found in ${repository}`);
+      }
       version = release.tag_name;
       release_id = release.id;
     }
+    let tagName = version;
 
     const tool = core.getInput("tool") || repo;
     let toolPath = tc.find(tool, version, runnerArch);
@@ -85,7 +91,7 @@ async function run(): Promise<void> {
       let page = 1;
       for (let i = 0; !release_id && i < tags.length; i++) {
         const tag = tags[i];
-        core.debug(`checking for release matching tag ${tag}`);
+        core.debug(`checking for release on tag ${tag}`);
         try {
           const releaseRes = await octokit.rest.repos.getReleaseByTag({
             owner,
@@ -95,16 +101,13 @@ async function run(): Promise<void> {
           const release = releaseRes.data;
           release_id = release.id;
           tagName = release.tag_name;
-          if (!tagName.startsWith("v")) {
-            tagName = `v${tagName}`;
-          }
         } catch (err) {
           core.warning(`get release for tag ${tag}: ${err}`);
           for (; i === tags.length - 1; page++) {
             const vercoerced = semver.coerce(version);
             if (!vercoerced) {
               throw new Error(
-                "version must be empty, an exact tag, or a semver",
+                "version must be empty, an exact tag, or coercible into a semver",
               );
             }
             const range = new semver.Range(`^${vercoerced}`);
@@ -118,7 +121,9 @@ async function run(): Promise<void> {
               .map((tag) => tag.name)
               // NB: .filter(range.test) doesn't work for some reason :(
               .filter((tag) => range.test(tag));
-            core.debug(`tags ${newTags.join(",")}`);
+            core.debug(
+              `found new tags in range ${range} on page ${page}: ${newTags.join(" ")}`,
+            );
             tags = tags.concat(newTags);
           }
         }
@@ -127,14 +132,13 @@ async function run(): Promise<void> {
       if (!release_id) {
         throw new Error(`no release found with a tag matching ${version}`);
       }
-      core.info(`found matching tag with release ID ${release_id}`);
+      core.info(`found release ${release_id} on tag ${tagName} matching version ${version} in ${repository}`);
 
       const releaseAssetsRes = await octokit.rest.repos.listReleaseAssets({
         owner,
         repo,
         release_id,
-        // FIXME(frantjc): Paginate instead of relying on there being <100 release assets.
-        per_page: 100,
+        per_page,
       });
       const releaseAssets = releaseAssetsRes.data;
 
@@ -165,11 +169,11 @@ async function run(): Promise<void> {
 
       if (!toolReleaseAsset) {
         throw new Error(
-          `no release assets matching ${runnerOs}/${runnerArch} were found`,
+          `no release assets matching ${runnerOs}/${runnerArch} were found on release ${release_id} in ${repository}`,
         );
       }
       core.info(
-        `found release asset ${toolReleaseAsset.name} matching ${runnerOs}/${runnerArch}`,
+        `found release asset ${toolReleaseAsset.name} matching ${runnerOs}/${runnerArch} on release ${release_id} in ${repository}`,
       );
 
       const downloadDest = path.join(tmp, toolReleaseAsset.name);
