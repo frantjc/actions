@@ -102,7 +102,7 @@ async function run(): Promise<void> {
           release_id = release.id;
           tagName = release.tag_name;
         } catch (err) {
-          core.warning(`get release for tag ${tag}: ${err}`);
+          core.info(`failed to get release by tag ${tag}: ${err}`);
           for (; i === tags.length - 1; page++) {
             const vercoerced = semver.coerce(version);
             if (!vercoerced) {
