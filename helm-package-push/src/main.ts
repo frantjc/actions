@@ -149,7 +149,11 @@ async function helmPluginUninstall(
       },
     });
   } catch (err) {
-    if (!pluginUninstallOutput.includes(`Plugin: ${pluginName} not found`)) {
+    if (
+      !pluginUninstallOutput
+        .toLowerCase()
+        .includes(`plugin: ${pluginName} not found`)
+    ) {
       throw err;
     }
   }
@@ -161,6 +165,7 @@ class ChartMuseumPusher extends Pusher {
     const installedPlugins = await helmPluginList();
 
     const pluginVersion = process.env.CM_PLUGIN_VERSION || "v0.10.4";
+    const pluginVerify = new Boolean(process.env.CM_PLUGIN_VERIFY).valueOf();
     const displayPluginVersion = pluginVersion.slice(1);
 
     const alreadyInstalled = installedPlugins.some((plugin) => {
@@ -190,6 +195,7 @@ class ChartMuseumPusher extends Pusher {
       "install",
       "https://github.com/chartmuseum/helm-push",
       `--version=${pluginVersion}`,
+      `--verify=${pluginVerify}`,
     ];
 
     if (opts?.debug) {
@@ -391,7 +397,11 @@ async function helmRepoList(): Promise<Array<HelmRepo>> {
     })
     // We don't want to error on exit 1 with output "no repositories to show",
     // we just want to return the empty array.
-    .catch(core.error);
+    .catch((err) => {
+      if (!`${err}`.includes("no repositories to show")) {
+        throw err;
+      }
+    });
   core.endGroup();
 
   return repos;
