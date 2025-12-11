@@ -29,6 +29,12 @@ Package and push a Helm Chart to an OCI, ChartMuseum or JFrog-Artifactory-compat
 # This action relies on `helm` being installed to work.
 # The simplest way to do this is via https://github.com/azure/setup-helm.
 #  - uses: azure/setup-helm@v4
+# Note, the cm-push plugin is incompatible with Helm v4. See
+# https://github.com/chartmuseum/helm-push/issues/225.
+# To push to ChartMuseum, downgrade to Helm v3:
+#  - uses: azure/setup-helm@v4
+#    with:
+#      version: v3.19.3
 - uses: frantjc/actions/helm-package-push@v1
   with:
     # Path to chart to package and push.

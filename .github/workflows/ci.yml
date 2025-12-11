@@ -50,7 +50,7 @@ jobs:
           repository: go-task/task
           version: v3
       - run: task --version
-  helm-package-push-and-ghcr-delete-images:
+  helm-package-push-cm:
     services:
       cm:
         image: chartmuseum/chartmuseum
@@ -66,18 +66,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: azure/setup-helm@v4
-      - uses: ./helm-package-push
-        id: ghcr
         with:
-          chart-path: testdata/charts/valid
-          repository: oci://ghcr.io/${{ github.repository }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GH_PAT }}
-      - uses: ./ghcr-delete-images
-        with:
-          tags: |
-            ghcr.io/${{ github.repository }}/${{ steps.ghcr.outputs.name }}:${{ steps.ghcr.outputs.version }}
-          token: ${{ secrets.GH_PAT }}
+          version: v3.19.3
       - uses: ./helm-package-push
         with:
           chart-path: testdata/charts/valid
@@ -114,3 +104,20 @@ jobs:
           repository: cm://localhost:8080/
         env:
           HELM_REPO_USE_HTTP: "true"
+  helm-package-push-oci-and-ghcr-delete-images:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: azure/setup-helm@v4
+      - uses: ./helm-package-push
+        id: ghcr
+        with:
+          chart-path: testdata/charts/valid
+          repository: oci://ghcr.io/${{ github.repository }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GH_PAT }}
+      - uses: ./ghcr-delete-images
+        with:
+          tags: |
+            ghcr.io/${{ github.repository }}/${{ steps.ghcr.outputs.name }}:${{ steps.ghcr.outputs.version }}
+          token: ${{ secrets.GH_PAT }}
