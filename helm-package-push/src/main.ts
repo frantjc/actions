@@ -368,26 +368,30 @@ async function helmRepoList(): Promise<Array<HelmRepo>> {
     passedHeader = false;
 
   core.startGroup("Exec helm repo list");
-  await cp.exec("helm", ["repo", "list"], {
-    listeners: {
-      stdline: (line) => {
-        if (passedHeader) {
-          const cols = line.split(/\t/).map((c) => c.trim());
+  await cp
+    .exec("helm", ["repo", "list"], {
+      listeners: {
+        stdline: (line) => {
+          if (passedHeader) {
+            const cols = line.split(/\t/).map((c) => c.trim());
 
-          if (cols.length < 2) {
-            throw new Error(`invalid helm repo list output: ${line}`);
+            if (cols.length < 2) {
+              throw new Error(`invalid helm repo list output: ${line}`);
+            }
+
+            repos.push({
+              name: cols[0],
+              url: cols[1],
+            });
+          } else {
+            passedHeader = true;
           }
-
-          repos.push({
-            name: cols[0],
-            url: cols[1],
-          });
-        } else {
-          passedHeader = true;
-        }
+        },
       },
-    },
-  });
+    })
+    // We don't want to error on exit 1 with output "no repositories to show",
+    // we just want to return the empty array.
+    .catch(core.error);
   core.endGroup();
 
   return repos;

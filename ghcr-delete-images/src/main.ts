@@ -1,16 +1,14 @@
 import * as core from "@actions/core";
-import { Octokit } from "octokit";
+import * as gh from "@actions/github";
 
 const package_type = "container";
 
 async function run(): Promise<void> {
   try {
-    const octokit = new Octokit({
-      auth: core.getInput("token", {
-        required: true,
-      }),
+    const token = core.getInput("token", {
+      required: true,
     });
-
+    const octokit = gh.getOctokit(token);
     const tags = core.getMultilineInput("tags", {
       required: true,
     });

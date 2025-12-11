@@ -18,7 +18,7 @@ inputs:
   tool:
     description: |
       Name of the tool to install. Defaults to the repo name.
-    required: true
+    required: false
 runs:
   using: node24
   main: ./dist/index.js

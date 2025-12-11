@@ -1,6 +1,6 @@
 import * as core from "@actions/core";
 import * as tc from "@actions/tool-cache";
-import { Octokit } from "octokit";
+import * as gh from "@actions/github";
 import os from "os";
 import path from "path";
 import semver from "semver";
@@ -42,11 +42,15 @@ const per_page = 100;
 
 async function run(): Promise<void> {
   try {
-    const token = core.getInput("token");
-    const octokit = new Octokit({ auth: token });
+    const token = core.getInput("token", {
+      required: true,
+    });
+    const octokit = gh.getOctokit(token);
     const auth = token ? `token ${token}` : undefined;
 
-    const repository = core.getInput("repository", { required: true });
+    const repository = core.getInput("repository", {
+      required: true,
+    });
     const [owner, repo] = repository.split("/", 2);
     let version = core.getInput("version");
     let release_id = 0;
