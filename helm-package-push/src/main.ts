@@ -165,7 +165,6 @@ class ChartMuseumPusher extends Pusher {
     const installedPlugins = await helmPluginList();
 
     const pluginVersion = process.env.CM_PLUGIN_VERSION || "v0.10.4";
-    const pluginVerify = new Boolean(process.env.CM_PLUGIN_VERIFY).valueOf();
     const displayPluginVersion = pluginVersion.slice(1);
 
     const alreadyInstalled = installedPlugins.some((plugin) => {
@@ -195,7 +194,6 @@ class ChartMuseumPusher extends Pusher {
       "install",
       "https://github.com/chartmuseum/helm-push",
       `--version=${pluginVersion}`,
-      `--verify=${pluginVerify}`,
     ];
 
     if (opts?.debug) {
