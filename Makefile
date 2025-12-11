@@ -19,7 +19,7 @@ else
 release:
 	@$(YARN)
 	@$(YARN) all
-	@$(GIT) add src/ dist/
+	@$(GIT) add .
 	@$(GIT) commit -m $(SEMVER)
 	@$(YARN) version --new-version $(SEMVER)
 	@$(GIT) push
