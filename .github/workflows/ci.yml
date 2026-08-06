@@ -5,6 +5,7 @@ on:
       - main
     paths:
       - .github/workflows/ci.yml
+      - cache-docker-volume/**
       - helm-package-push/**
       - ghcr-delete-images/**
       - setup-tool/**
@@ -22,7 +23,7 @@ jobs:
           - windows-latest
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: ./setup-tool
         with:
           repository: fluxcd/flux2
@@ -64,7 +65,7 @@ jobs:
           --health-cmd "sh -c 'wget -qSO- http://localhost:8080/health'"
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: azure/setup-helm@v4
         with:
           version: v3.19.3
@@ -107,7 +108,7 @@ jobs:
   helm-package-push-oci-and-ghcr-delete-images:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: azure/setup-helm@v4
       - uses: ./helm-package-push
         id: ghcr
@@ -121,3 +122,17 @@ jobs:
           tags: |
             ghcr.io/${{ github.repository }}/${{ steps.ghcr.outputs.name }}:${{ steps.ghcr.outputs.version }}
           token: ${{ secrets.GH_PAT }}
+  cache-docker-volume:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./cache-docker-volume
+        id: cache
+        with:
+          volume: test
+          key: cache-docker-volume-test
+      - if: steps.cache.outputs.cache-hit == 'true'
+        run: |
+          content=$(docker run --rm -v test:/volume alpine cat /volume/hello.txt)
+          [ "$content" = "hello there" ]
+      - run: docker run --rm -v test:/volume alpine sh -c 'echo "hello there" > /volume/hello.txt'

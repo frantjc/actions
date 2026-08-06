@@ -1,0 +1,30 @@
+name: Cache Docker volume
+description: |
+  Save and restore a named Docker volume using GitHub Actions cache.
+author: frantjc
+inputs:
+  image:
+    description: |
+      Image to use for the Docker volume cache/restore. PATH must contain `cp`.
+    default: alpine
+  volume:
+    description: |
+      Name of the Docker volume to cache/restore.
+    required: true
+  key:
+    description: |
+      Cache key.
+    required: true
+  restore-keys:
+    description: |
+      Ordered list of prefix-matched keys to restore from on a cache miss.
+    required: false
+outputs:
+  cache-hit:
+    description: |
+      Whether an exact cache key match was found.
+runs:
+  using: node24
+  main: ./dist/main.js
+  post: ./dist/main.js
+  post-if: success()
