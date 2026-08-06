@@ -38,6 +38,8 @@ async function restore(): Promise<void> {
     await cp.exec("docker", [
       "run",
       "--rm",
+      "--user",
+      `${process.getuid!()}:${process.getgid!()}`,
       "--entrypoint",
       "cp",
       "-v",
@@ -54,7 +56,7 @@ async function restore(): Promise<void> {
     if (typeof err === "string" || err instanceof Error) {
       core.setFailed(err);
     } else {
-      core.setFailed(`caught unknown error ${err}`);
+      core.setFailed(`Caught unknown error ${err}`);
     }
   } finally {
     fs.rmSync(tmp, { recursive: true, force: true });
@@ -80,6 +82,8 @@ async function save(): Promise<void> {
     await cp.exec("docker", [
       "run",
       "--rm",
+      "--user",
+      `${process.getuid!()}:${process.getgid!()}`,
       "--entrypoint",
       "cp",
       "-v",
@@ -102,7 +106,7 @@ async function save(): Promise<void> {
     } else if (typeof err === "string" || err instanceof Error) {
       core.setFailed(err);
     } else {
-      core.setFailed(`caught unknown error ${err}`);
+      core.setFailed(`Caught unknown error ${err}`);
     }
   } finally {
     fs.rmSync(tmp, { recursive: true, force: true });

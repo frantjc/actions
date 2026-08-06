@@ -586,7 +586,7 @@ async function run(): Promise<void> {
     if (typeof err === "string" || err instanceof Error) {
       core.setFailed(err);
     } else {
-      core.setFailed(`caught unknown error ${err}`);
+      core.setFailed(`Caught unknown error ${err}`);
     }
   }
 }
@@ -663,7 +663,7 @@ async function cleanup(): Promise<void> {
     if (typeof err === "string" || err instanceof Error) {
       core.setFailed(err);
     } else {
-      core.setFailed(`caught unknown error ${err}`);
+      core.setFailed(`Caught unknown error ${err}`);
     }
   }
 }
