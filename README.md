@@ -97,3 +97,20 @@ Setup and cache a tool from a GitHub release.
     # Defaults to the repository name.
     tool: yq
 ```
+
+### cache-docker-volume
+
+Save and restore a Docker volume using GitHub Actions cacheing.
+
+```yml
+- uses: frantjc/actions/cache-docker-volume@main
+  with:
+    # The name of the Docker volume.
+    # Required.
+    volume: dagger
+    # The cache key.
+    # Required.
+    key: dagger-${{ hashfiles('dagger.json', '.dagger/**') }}
+    restore-keys: |
+      dagger-
+```
