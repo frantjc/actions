@@ -13,6 +13,8 @@ on:
   pull_request:
     branches:
       - main
+permissions:
+  contents: read
 jobs:
   setup-tool:
     strategy:
@@ -107,6 +109,8 @@ jobs:
           HELM_REPO_USE_HTTP: "true"
   helm-package-push-oci-and-ghcr-delete-images:
     runs-on: ubuntu-latest
+    permissions:
+      packages: write
     steps:
       - uses: actions/checkout@v7
       - uses: azure/setup-helm@v4
@@ -115,8 +119,8 @@ jobs:
         with:
           chart-path: testdata/charts/valid
           repository: oci://ghcr.io/${{ github.repository }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GH_PAT }}
+          username: x-access-token
+          password: ${{ github.token }}
       - uses: ./ghcr-delete-images
         with:
           tags: |
