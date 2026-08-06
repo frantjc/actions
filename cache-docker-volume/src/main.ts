@@ -10,6 +10,18 @@ const tmp = path.join(
   "cache-docker-volume",
 );
 
+function chmodR(p: string, mode: number): void {
+  fs.chmodSync(p, mode);
+  for (const entry of fs.readdirSync(p, { withFileTypes: true })) {
+    const child = path.join(p, entry.name);
+    if (entry.isDirectory()) {
+      chmodR(child, mode);
+    } else {
+      fs.chmodSync(child, mode);
+    }
+  }
+}
+
 async function restore(): Promise<void> {
   if (!cache.isFeatureAvailable()) {
     core.setOutput("cache-hit", Boolean(false));
@@ -38,8 +50,6 @@ async function restore(): Promise<void> {
     await cp.exec("docker", [
       "run",
       "--rm",
-      "--user",
-      `${process.getuid!()}:${process.getgid!()}`,
       "--entrypoint",
       "cp",
       "-v",
@@ -59,6 +69,7 @@ async function restore(): Promise<void> {
       core.setFailed(`Caught unknown error ${err}`);
     }
   } finally {
+    if (fs.existsSync(tmp)) chmodR(tmp, 0o755);
     fs.rmSync(tmp, { recursive: true, force: true });
   }
 }
@@ -82,8 +93,6 @@ async function save(): Promise<void> {
     await cp.exec("docker", [
       "run",
       "--rm",
-      "--user",
-      `${process.getuid!()}:${process.getgid!()}`,
       "--entrypoint",
       "cp",
       "-v",
@@ -109,6 +118,7 @@ async function save(): Promise<void> {
       core.setFailed(`Caught unknown error ${err}`);
     }
   } finally {
+    if (fs.existsSync(tmp)) chmodR(tmp, 0o755);
     fs.rmSync(tmp, { recursive: true, force: true });
   }
 }
