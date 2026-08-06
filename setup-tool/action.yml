@@ -1,6 +1,6 @@
-name: Setup tools
+name: Setup tool
 description: |
-  Setup tools from a GitHub release.
+  Setup tool from a GitHub release.
 author: frantjc
 inputs:
   token:
