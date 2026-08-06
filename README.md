@@ -110,7 +110,7 @@ Save and restore a Docker volume using GitHub Actions cacheing.
     volume: dagger
     # The cache key.
     # Required.
-    key: dagger-${{ hashfiles('dagger.json', '.dagger/**') }}
+    key: dagger-${{ hashFiles('dagger.json', '.dagger/**') }}
     restore-keys: |
       dagger-
 ```
