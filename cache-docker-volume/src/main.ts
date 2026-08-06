@@ -20,18 +20,9 @@ async function restore(): Promise<void> {
     const image = core.getInput("image", { required: true });
     const volume = core.getInput("volume", { required: true });
     const key = core.getInput("key", { required: true });
-    const enableCrossOsArchive = core.getBooleanInput(
-      "enable-cross-os-archive",
-    );
     const restoreKeys = core.getMultilineInput("restore-keys").filter(Boolean);
 
-    const cacheKey = await cache.restoreCache(
-      [tmp],
-      key,
-      restoreKeys,
-      {},
-      enableCrossOsArchive,
-    );
+    const cacheKey = await cache.restoreCache([tmp], key, restoreKeys);
     core.setOutput("cache-hit", Boolean(cacheKey));
 
     if (!cacheKey) {
@@ -78,10 +69,8 @@ async function save(): Promise<void> {
   try {
     const image = core.getInput("image", { required: true });
     const volume = core.getInput("volume", { required: true });
-    const enableCrossOsArchive = core.getBooleanInput(
-      "enable-cross-os-archive",
-    );
     const key = core.getInput("key", { required: true });
+
     const restoredKey = core.getState("cache-matched-key");
     if (restoredKey === key) {
       return;
@@ -103,7 +92,7 @@ async function save(): Promise<void> {
       "/out/",
     ]);
 
-    const cacheId = await cache.saveCache([tmp], key, {}, enableCrossOsArchive);
+    const cacheId = await cache.saveCache([tmp], key);
     if (cacheId != -1) {
       core.info(`Cache saved with key: ${key}`);
     }
