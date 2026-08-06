@@ -5,7 +5,7 @@ author: frantjc
 inputs:
   image:
     description: |
-      Image to use for the Docker volume cache/restore. PATH must contain `cp`.
+      Image to use for the Docker volume cache/restore. PATH must contain `tar`.
     default: alpine
   volume:
     description: |

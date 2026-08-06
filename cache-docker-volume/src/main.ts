@@ -32,22 +32,23 @@ async function restore(): Promise<void> {
       return;
     }
 
-    core.saveState("cache-matched-key", cacheKey);
+    core.saveState("cacheKey", cacheKey);
 
     await cp.exec("docker", ["volume", "create", volume]);
     await cp.exec("docker", [
       "run",
       "--rm",
       "--entrypoint",
-      "cp",
+      "tar",
       "-v",
-      `${tmp}:/src`,
+      `${tmp}:/restore`,
       "-v",
       `${volume}:/volume`,
       image,
-      "-a",
-      "/src/.",
-      "/volume/",
+      "-xzf",
+      "/restore/volume.tar.gz",
+      "-C",
+      "/volume",
     ]);
     core.info(`Volume restored from key: ${cacheKey}`);
   } catch (err) {
@@ -56,6 +57,8 @@ async function restore(): Promise<void> {
     } else {
       core.setFailed(`Caught unknown error ${err}`);
     }
+  } finally {
+    fs.rmSync(tmp, { recursive: true, force: true });
   }
 }
 
@@ -69,8 +72,8 @@ async function save(): Promise<void> {
     const volume = core.getInput("volume", { required: true });
     const key = core.getInput("key", { required: true });
 
-    const restoredKey = core.getState("cache-matched-key");
-    if (restoredKey === key) {
+    const cacheKey = core.getState("cacheKey");
+    if (cacheKey === key) {
       return;
     }
 
@@ -78,16 +81,20 @@ async function save(): Promise<void> {
     await cp.exec("docker", [
       "run",
       "--rm",
+      "--user",
+      `${process.getuid!()}:${process.getgid!()}`,
       "--entrypoint",
-      "cp",
+      "tar",
       "-v",
       `${volume}:/volume`,
       "-v",
-      `${tmp}:/out`,
+      `${tmp}:/save`,
       image,
-      "-a",
-      "/volume/.",
-      "/out/",
+      "-czf",
+      "/save/volume.tar.gz",
+      "-C",
+      "/volume",
+      ".",
     ]);
 
     const cacheId = await cache.saveCache([tmp], key);
@@ -102,6 +109,8 @@ async function save(): Promise<void> {
     } else {
       core.setFailed(`Caught unknown error ${err}`);
     }
+  } finally {
+    fs.rmSync(tmp, { recursive: true, force: true });
   }
 }
 
