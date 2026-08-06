@@ -1,6 +1,6 @@
 import * as core from "@actions/core";
 import * as cache from "@actions/cache";
-import * as exec from "@actions/exec";
+import * as cp from "@actions/exec";
 import fs from "fs";
 import os from "os";
 import path from "path";
@@ -10,14 +10,85 @@ const tmp = path.join(
   "cache-docker-volume",
 );
 
-async function save(): Promise<void> {
+async function restore(): Promise<void> {
+  if (!cache.isFeatureAvailable()) {
+    core.setOutput("cache-hit", Boolean(false));
+    return;
+  }
+
   try {
     const image = core.getInput("image", { required: true });
     const volume = core.getInput("volume", { required: true });
     const key = core.getInput("key", { required: true });
+    const enableCrossOsArchive = core.getBooleanInput(
+      "enable-cross-os-archive",
+    );
+    const restoreKeys = core.getMultilineInput("restore-keys").filter(Boolean);
+
+    const cacheKey = await cache.restoreCache(
+      [tmp],
+      key,
+      restoreKeys,
+      {},
+      enableCrossOsArchive,
+    );
+    core.setOutput("cache-hit", Boolean(cacheKey));
+
+    if (!cacheKey) {
+      core.info(
+        `Cache not found for input keys: ${[key, ...restoreKeys].join(", ")}`,
+      );
+      return;
+    }
+
+    core.saveState("cache-matched-key", cacheKey);
+
+    await cp.exec("docker", ["volume", "create", volume]);
+    await cp.exec("docker", [
+      "run",
+      "--rm",
+      "--entrypoint",
+      "cp",
+      "-v",
+      `${tmp}:/src`,
+      "-v",
+      `${volume}:/volume`,
+      image,
+      "-a",
+      "/src/.",
+      "/volume/",
+    ]);
+    core.info(`Volume restored from key: ${cacheKey}`);
+  } catch (err) {
+    if (typeof err === "string" || err instanceof Error) {
+      core.setFailed(err);
+    } else {
+      core.setFailed(`caught unknown error ${err}`);
+    }
+  } finally {
+    fs.rmSync(tmp, { recursive: true, force: true });
+  }
+}
+
+async function save(): Promise<void> {
+  if (!cache.isFeatureAvailable()) {
+    return;
+  }
+
+  try {
+    const image = core.getInput("image", { required: true });
+    const volume = core.getInput("volume", { required: true });
+    const enableCrossOsArchive = core.getBooleanInput(
+      "enable-cross-os-archive",
+    );
+    const key = core.getInput("key", { required: true });
+    const restoredKey = core.getState("cache-matched-key");
+    if (restoredKey === key) {
+      return;
+    }
 
     fs.mkdirSync(tmp, { recursive: true });
-    await exec.exec("docker", [
+    await cp.exec("docker", [
       "run",
       "--rm",
       "--entrypoint",
@@ -32,54 +103,20 @@ async function save(): Promise<void> {
       "/out/",
     ]);
 
-    await cache.saveCache([tmp], key);
-    core.info(`saved volume '${volume}' with key '${key}'`);
-  } catch (err) {
-    if (typeof err === "string" || err instanceof Error) {
-      core.setFailed(err);
-    } else {
-      core.setFailed(`caught unknown error ${err}`);
+    const cacheId = await cache.saveCache([tmp], key, {}, enableCrossOsArchive);
+    if (cacheId != -1) {
+      core.info(`Cache saved with key: ${key}`);
     }
-  }
-}
-
-async function restore(): Promise<void> {
-  try {
-    const image = core.getInput("image", { required: true });
-    const volume = core.getInput("volume", { required: true });
-    const key = core.getInput("key", { required: true });
-    const restoreKeys = core.getMultilineInput("restore-keys").filter(Boolean);
-
-    const hit = await cache.restoreCache([tmp], key, restoreKeys);
-    core.setOutput("cache-hit", Boolean(hit));
-
-    if (!hit) {
-      core.info(`no cache found for key '${key}'`);
+  } catch (err) {
+    if (err instanceof cache.ReserveCacheError) {
       return;
-    }
-
-    await exec.exec("docker", ["volume", "create", volume]);
-    await exec.exec("docker", [
-      "run",
-      "--rm",
-      "--entrypoint",
-      "cp",
-      "-v",
-      `${tmp}:/src`,
-      "-v",
-      `${volume}:/volume`,
-      image,
-      "-a",
-      "/src/.",
-      "/volume/",
-    ]);
-    core.info(`restored volume '${volume}' from cache key '${hit}'`);
-  } catch (err) {
-    if (typeof err === "string" || err instanceof Error) {
+    } else if (typeof err === "string" || err instanceof Error) {
       core.setFailed(err);
     } else {
       core.setFailed(`caught unknown error ${err}`);
     }
+  } finally {
+    fs.rmSync(tmp, { recursive: true, force: true });
   }
 }
 
