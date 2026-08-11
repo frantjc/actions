@@ -81,8 +81,6 @@ async function save(): Promise<void> {
     await cp.exec("docker", [
       "run",
       "--rm",
-      "--user",
-      `${process.getuid!()}:${process.getgid!()}`,
       "--entrypoint",
       "tar",
       "-v",
