@@ -3,6 +3,12 @@ import * as gh from "@actions/github";
 
 const package_type = "container";
 
+type PackageVersion = {
+  id: number;
+  name: string;
+  metadata?: { container?: { tags: string[] } };
+};
+
 async function run(): Promise<void> {
   try {
     const token = core.getInput("token", {
@@ -12,6 +18,8 @@ async function run(): Promise<void> {
     const tags = core.getMultilineInput("tags", {
       required: true,
     });
+    // listed once per package rather than per tag, since a package can have thousands of versions
+    const versionsByPackage = new Map<string, PackageVersion[]>();
 
     for (const tag of tags) {
       let cparts = [];
@@ -46,17 +54,23 @@ async function run(): Promise<void> {
           throw new Error(`invalid image tag ${tag}`);
         }
 
-        const packageVersions =
-          await octokit.rest.packages.getAllPackageVersionsForPackageOwnedByUser(
+        const key = `${username}/${package_name}`;
+        let packageVersions = versionsByPackage.get(key);
+        if (!packageVersions) {
+          packageVersions = (await octokit.paginate(
+            octokit.rest.packages.getAllPackageVersionsForPackageOwnedByUser,
             {
               state: "active",
               package_type,
               package_name,
               username,
+              per_page: 100,
             },
-          );
+          )) as PackageVersion[];
+          versionsByPackage.set(key, packageVersions);
+        }
 
-        const packageVersion = packageVersions.data.find((packageVersion) => {
+        const packageVersion = packageVersions.find((packageVersion) => {
           return (
             (isDigest && packageVersion.name === tagOrDigest) ||
             packageVersion.metadata?.container?.tags.includes(tagOrDigest)
@@ -64,7 +78,7 @@ async function run(): Promise<void> {
         });
 
         if (packageVersion) {
-          if (packageVersions.data.length === 1) {
+          if (packageVersions.length === 1) {
             await octokit.rest.packages.deletePackageForUser({
               package_type,
               package_name,
@@ -78,6 +92,10 @@ async function run(): Promise<void> {
               package_version_id: packageVersion.id,
             });
           }
+          versionsByPackage.set(
+            key,
+            packageVersions.filter((v) => v.id !== packageVersion.id),
+          );
         } else {
           throw new Error(
             `unable to find package version ID for image tag ${tag}`,

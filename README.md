@@ -21,7 +21,26 @@ Delete container images from the ghcr.io registry using GitHub's API. If this is
       ghcr.io/frantjc/actions@sha256:4594271250150c1a322ed749abfd218e1a8c6eb1ade90872e325a664412e2037
 ```
 
+### cache-docker-volume
+
+Save and restore a Docker volume using GitHub Actions cacheing.
+
+```yml
+- uses: frantjc/actions/cache-docker-volume@main
+  with:
+    # The name of the Docker volume.
+    # Required.
+    volume: dagger
+    # The cache key.
+    # Required.
+    key: dagger-${{ hashFiles('dagger.json', '.dagger/**') }}
+    restore-keys: |
+      dagger-
+```
+
 ### helm-package-push
+
+> Deprecated: Use [`barge`](https://github.com/frantjc/barge).
 
 Package and push a Helm Chart to an OCI, ChartMuseum or JFrog-Artifactory-compatible http(s) repository.
 
@@ -72,6 +91,8 @@ Package and push a Helm Chart to an OCI, ChartMuseum or JFrog-Artifactory-compat
 
 ### setup-tool
 
+> Deprecated: Use [`mise`](https://github.com/jdx/mise-action).
+
 Setup and cache a tool from a GitHub release.
 
 ```yml
@@ -96,21 +117,4 @@ Setup and cache a tool from a GitHub release.
     # The name of the tool to setup.
     # Defaults to the repository name.
     tool: yq
-```
-
-### cache-docker-volume
-
-Save and restore a Docker volume using GitHub Actions cacheing.
-
-```yml
-- uses: frantjc/actions/cache-docker-volume@main
-  with:
-    # The name of the Docker volume.
-    # Required.
-    volume: dagger
-    # The cache key.
-    # Required.
-    key: dagger-${{ hashFiles('dagger.json', '.dagger/**') }}
-    restore-keys: |
-      dagger-
 ```
